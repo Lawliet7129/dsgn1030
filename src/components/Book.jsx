@@ -20,6 +20,7 @@ import {
 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
 import {
+  castleRevealTriggerAtom,
   FINAL_PROJ_PAGE_INDEX,
   pageAtom,
   pages,
@@ -710,6 +711,7 @@ export const Book = ({ ...props }) => {
   const [page] = useAtom(pageAtom);
   const [delayedPage, setDelayedPage] = useState(page);
   const [showCastle, setShowCastle] = useState(false);
+  const [, setCastleRevealTrigger] = useAtom(castleRevealTriggerAtom);
 
   useEffect(() => {
     let timeout;
@@ -752,6 +754,13 @@ export const Book = ({ ...props }) => {
     );
     return () => clearTimeout(timer);
   }, [page, delayedPage]);
+
+  // Fire the sparkle flourish overlay each time the castle transitions hidden→shown.
+  useEffect(() => {
+    if (showCastle) {
+      setCastleRevealTrigger((n) => n + 1);
+    }
+  }, [showCastle, setCastleRevealTrigger]);
 
   const isFinalProjPage = page === FINAL_PROJ_PAGE_INDEX;
 

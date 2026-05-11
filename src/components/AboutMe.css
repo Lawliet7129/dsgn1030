@@ -136,6 +136,21 @@
   letter-spacing: 0.01em;
 }
 
+/* Storybook drop cap on the first paragraph of the About Me copy. Playfair
+   italic in the palette navy — pulls the eye into the prose and reinforces
+   the fairytale typographic system. */
+.about-me-page .main-content-responsive p:first-of-type::first-letter {
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  float: left;
+  font-size: 3.2em;
+  line-height: 0.88;
+  padding-right: 0.08em;
+  padding-top: 0.05em;
+  color: var(--fg);
+}
+
 /* Download Resume button */
 .about-me-page .download-resume-btn {
   display: inline-block;

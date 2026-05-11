@@ -57,6 +57,7 @@
 #root {
   width: 100vw;
   height: 100vh;
+  position: relative;
   /* Twilight sky: navy dusk top → dusty horizon glow at bottom-center (where the castle sits) */
   background:
     radial-gradient(
@@ -75,12 +76,52 @@
     );
 }
 
+/* Breathing sky — a slow second radial overlay that fades in and out so the
+   atmosphere feels alive without any single element being obviously animated. */
+#root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 95%,
+    rgba(200, 204, 215, 0.18) 0%,
+    rgba(148, 159, 182, 0.12) 30%,
+    rgba(60, 76, 119, 0) 70%
+  );
+  opacity: 0;
+  animation: sky-breathe 22s ease-in-out infinite;
+}
+
+@keyframes sky-breathe {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1.5%);
+  }
+}
+
 body {
   margin: 0;
 }
 
 .outline-text {
   -webkit-text-stroke: 1px var(--pal-light);
+}
+
+/* Storybook-style text selection */
+::selection {
+  background: var(--pal-light);
+  color: var(--pal-navy-900);
+}
+::-moz-selection {
+  background: var(--pal-light);
+  color: var(--pal-navy-900);
 }
 
 /* Soft, slow twinkle for the star field */
@@ -93,5 +134,136 @@ body {
   50% {
     opacity: var(--twinkle-max, 0.9);
     transform: scale(1.05);
+  }
+}
+
+/* Marquee edge fade — soft mask so the giant Playfair text never collides
+   with the viewport edges. Gives the type an editorial / plate-like feel. */
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 7%,
+    #000 93%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 7%,
+    #000 93%,
+    transparent 100%
+  );
+}
+
+/* Shooting star streak. Drawn as a soft pill that scales out from its origin. */
+.shooting-star {
+  width: 0;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(200, 204, 215, 0) 0%,
+    rgba(200, 204, 215, 0.85) 60%,
+    #ffffff 100%
+  );
+  filter: drop-shadow(0 0 6px rgba(200, 204, 215, 0.55));
+  transform-origin: 0 50%;
+}
+
+@keyframes shoot {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    width: 260px;
+    opacity: 0;
+  }
+}
+
+/* Castle reveal flourish — sparkle particles fan outward from screen center
+   when the Disney castle becomes visible on the Final Proj. page. */
+.castle-sparkle {
+  position: absolute;
+  /* left/top set inline (50% / 52% by default). */
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(200, 204, 215, 0.65));
+  will-change: transform, opacity;
+}
+
+@keyframes sparkle-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+    transform: translate(
+        calc(-50% + (var(--tx) * 0.25)),
+        calc(-50% + (var(--ty) * 0.25))
+      )
+      scale(1.1);
+  }
+  100% {
+    transform: translate(
+        calc(-50% + var(--tx)),
+        calc(-50% + var(--ty))
+      )
+      scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Soft light bloom that flashes underneath the sparkle burst. */
+.castle-sparkle-glow {
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  transform: translate(-50%, -50%) scale(0.4);
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(200, 204, 215, 0.55) 0%,
+    rgba(200, 204, 215, 0.18) 30%,
+    rgba(200, 204, 215, 0) 70%
+  );
+  animation: sparkle-glow 1100ms ease-out forwards;
+  filter: blur(2px);
+}
+
+@keyframes sparkle-glow {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Accessibility: tone down all motion when the user prefers reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
