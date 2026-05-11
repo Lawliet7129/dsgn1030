@@ -118,10 +118,12 @@ const PAGE_DEPTH = 0.003;
 const PAGE_SEGMENTS = 30;
 const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
 
-/** Top inset for pj1-1 (About Me back) only — changing this does not affect pj1-2. */
-const PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO = 0.15;
-/** Top inset for pj1-2 (Exercise 1 / leaf 2 front) only — set equal to the About Me value when you want them to match. */
-const PJ1_DSGN_1030_FRONT_TOP_MARGIN_RATIO = 0.53;
+/** Top inset for pj1-1 (About Me back) only — changing this does not affect pj1-2.
+ *  Bumped slightly to leave room for the chapter running-head. */
+const PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO = 0.18;
+/** Top inset for pj1-2 (Exercise 1 / leaf 2 front) only — set equal to the About Me value when you want them to match.
+ *  Bumped up (lower number) so the large image clears the chapter inset border at the bottom. */
+const PJ1_DSGN_1030_FRONT_TOP_MARGIN_RATIO = 0.48;
 
 /** Portrait circle on About Me uses radius 350 on a 1024-wide canvas; pj1-3 overlay uses this × scale. */
 const ABOUT_ME_PORTRAIT_CIRCLE_RADIUS = 350;
@@ -157,12 +159,15 @@ function drawImageCircularCover(ctx, img, centerX, centerY, circleRadius) {
 
 /** Shared scale/placement for PJ1 compositing; margin is controlled per-page via `topMarginRatio`.
  *  Optional `captionLines`: centered under the image, one line each (About Me back only).
- *  Optional `circularOverlayImg`: pj1-3 on Exercise 1 front — drawn on top, circular, slightly right. */
+ *  Optional `circularOverlayImg`: pj1-3 on Exercise 1 front — drawn on top, circular, slightly right.
+ *  Optional `chapterFrameOpts`: if present, the storybook chapter frame is overlaid
+ *    on top of the photo composition (used by every interior pj1 page). */
 function createPj1TopThirdCanvasTextureFromImage(
   img,
   topMarginRatio,
   captionLines,
-  circularOverlayImg
+  circularOverlayImg,
+  chapterFrameOpts
 ) {
   if (!img?.complete || !img.width) return null;
   const canvasW = 1024;
@@ -225,7 +230,9 @@ function createPj1TopThirdCanvasTextureFromImage(
       PJ13_OVERLAY_RADIUS_SCALE *
       (canvasW / refCanvasW);
     const centerX = canvasW * 0.7;
-    const centerY = canvasH * 0.27;
+    // Shifted down (was 0.27) so the circular overlay clears the chapter
+    // running-head at the top of the page.
+    const centerY = canvasH * 0.32;
     drawImageCircularCover(
       ctx,
       circularOverlayImg,
@@ -233,6 +240,11 @@ function createPj1TopThirdCanvasTextureFromImage(
       centerY,
       circleRadius
     );
+  }
+
+  // Storybook chapter frame on top of the photo composition.
+  if (chapterFrameOpts) {
+    drawChapterFrame(ctx, canvasW, canvasH, chapterFrameOpts);
   }
 
   const texture = new CanvasTexture(canvas);
@@ -333,6 +345,112 @@ function drawTextWithLetterSpacing(ctx, text, anchorX, y, spacing) {
     cur += widths[i] + spacing;
   }
   ctx.textAlign = align;
+}
+
+/** Standardized chapter framing for every interior page of the book.
+ *  Two modes:
+ *   - "title": large centered top header (✦ + CHAPTER LABEL + rule) plus a
+ *     full footer (rule + ✦ + closing line). Used for chapter title pages.
+ *   - "interior": minimal running head — just chapter label (top-left) and
+ *     subtitle (top-right). No central content, so it never collides with
+ *     existing image/caption layouts on the pj1 / twilight pages.
+ *  Both modes always draw the double inset border so every page reads as
+ *  belonging to the same hardcover book.
+ *  `inkOnLight` flips ink color: navy ink on light pages (default), or light
+ *  ink on dark/photo pages. */
+function drawChapterFrame(ctx, W, H, opts) {
+  const {
+    mode = "title",
+    chapterLabel = "",
+    subtitle = "",
+    closingLine = "",
+    inkOnLight = true,
+  } = opts || {};
+  const inkAlpha = (a) =>
+    inkOnLight
+      ? `rgba(46, 60, 95, ${a})`
+      : `rgba(200, 204, 215, ${a})`;
+  const fontFamily =
+    '"Playfair Display", Georgia, "Times New Roman", serif';
+
+  // Double inset border (shared across both modes).
+  ctx.strokeStyle = inkAlpha(0.45);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(W * 0.07, H * 0.055, W * 0.86, H * 0.89);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = inkAlpha(0.25);
+  ctx.strokeRect(W * 0.085, H * 0.07, W * 0.83, H * 0.86);
+
+  ctx.textBaseline = "middle";
+
+  if (mode === "interior") {
+    // Running head — top-left chapter, top-right subtitle.
+    ctx.fillStyle = inkAlpha(0.6);
+    ctx.font = `italic 400 ${Math.round(W * 0.02)}px ${fontFamily}`;
+    if (chapterLabel) {
+      ctx.textAlign = "left";
+      drawTextWithLetterSpacing(
+        ctx,
+        chapterLabel,
+        W * 0.1,
+        H * 0.077,
+        W * 0.012
+      );
+    }
+    if (subtitle) {
+      ctx.textAlign = "right";
+      drawTextWithLetterSpacing(
+        ctx,
+        subtitle,
+        W * 0.9,
+        H * 0.077,
+        W * 0.012
+      );
+    }
+    return;
+  }
+
+  // === Title mode === (chapter title pages, blank chapter plates)
+  ctx.textAlign = "center";
+  ctx.fillStyle = inkAlpha(0.75);
+  ctx.font = `italic 400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", W / 2, H * 0.085);
+
+  if (chapterLabel) {
+    ctx.fillStyle = inkAlpha(0.65);
+    ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+    drawTextWithLetterSpacing(
+      ctx,
+      chapterLabel,
+      W / 2,
+      H * 0.115,
+      W * 0.018
+    );
+  }
+
+  ctx.strokeStyle = inkAlpha(0.4);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, H * 0.14);
+  ctx.lineTo(W * 0.58, H * 0.14);
+  ctx.stroke();
+
+  // Footer
+  ctx.strokeStyle = inkAlpha(0.3);
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, H * 0.85);
+  ctx.lineTo(W * 0.58, H * 0.85);
+  ctx.stroke();
+
+  ctx.fillStyle = inkAlpha(0.65);
+  ctx.font = `italic 400 ${Math.round(W * 0.024)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", W / 2, H * 0.88);
+
+  if (closingLine) {
+    ctx.fillStyle = inkAlpha(0.55);
+    ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+    ctx.fillText(closingLine, W / 2, H * 0.91);
+  }
 }
 
 /** Custom storybook cover — navy plate, double inset border, Playfair title
@@ -817,8 +935,10 @@ function createConstellationEndpaperTexture() {
 
 /** Twilight wash for photo pages: photo cover-fit on a light palette base,
  *  multiplied with a navy overlay and a soft corner vignette so raw jpgs
- *  feel like illustrated storybook plates. */
-function createTwilightPhotoTexture(imgEl) {
+ *  feel like illustrated storybook plates.
+ *  Optional `chapterFrameOpts` overlays the shared storybook chapter frame
+ *  (running head + border) on top of the washed photo. */
+function createTwilightPhotoTexture(imgEl, chapterFrameOpts) {
   if (!imgEl?.complete || !(imgEl.naturalWidth || imgEl.width)) return null;
   const w = 1024;
   const h = Math.round((w * PAGE_HEIGHT) / PAGE_WIDTH);
@@ -857,11 +977,346 @@ function createTwilightPhotoTexture(imgEl) {
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, w, h);
 
+  if (chapterFrameOpts) {
+    drawChapterFrame(ctx, w, h, chapterFrameOpts);
+  }
+
   const tex = new CanvasTexture(canvas);
   tex.colorSpace = SRGBColorSpace;
   tex.needsUpdate = true;
   return tex;
 }
+
+/** Generic storybook photo plate — a centered photograph with an optional
+ *  circular inset thumbnail, twilight wash for tonal cohesion with the rest
+ *  of the book, a Playfair italic caption block below the photo, hairline
+ *  plate borders around the image, and the standard chapter frame on top.
+ *  Used for the Chapter IV (Project 3 — Chess) spread. */
+function createPhotoPlateTexture(opts) {
+  const {
+    img,
+    overlayImg = null,
+    overlayCenter = { x: 0.78, y: 0.78 },
+    overlayRadiusScale = 0.55,
+    captionLines = [],
+    chapterFrameOpts = null,
+    topMarginRatio = 0.18,
+    maxImageWidthRatio = 0.78,
+    maxImageHeightRatio = 0.55,
+    twilightWashAlpha = 0.2,
+  } = opts || {};
+  if (!img?.complete || !(img.naturalWidth || img.width)) return null;
+
+  const W = 1024;
+  const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Light palette ground + soft radial halo so the page feels like paper,
+  // not a flat fill.
+  ctx.fillStyle = "#c8ccd7";
+  ctx.fillRect(0, 0, W, H);
+  const halo = ctx.createRadialGradient(
+    W * 0.5,
+    H * 0.45,
+    W * 0.1,
+    W * 0.5,
+    H * 0.5,
+    W * 0.85
+  );
+  halo.addColorStop(0, "rgba(255, 255, 255, 0.45)");
+  halo.addColorStop(1, "rgba(46, 60, 95, 0)");
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  // Contain-fit the photo into a generous storybook plate.
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const maxW = W * maxImageWidthRatio;
+  const maxH = H * maxImageHeightRatio;
+  const scale = Math.min(maxW / iw, maxH / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = (W - dw) / 2;
+  const dy = H * topMarginRatio;
+
+  ctx.drawImage(img, dx, dy, dw, dh);
+
+  // Twilight wash clipped to the photo so the surrounding paper stays light.
+  if (twilightWashAlpha > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(dx, dy, dw, dh);
+    ctx.clip();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = `rgba(46, 60, 95, ${twilightWashAlpha})`;
+    ctx.fillRect(dx, dy, dw, dh);
+    ctx.globalCompositeOperation = "source-over";
+    // Inner-corner vignette for storybook plate depth.
+    const vg = ctx.createRadialGradient(
+      dx + dw / 2,
+      dy + dh / 2,
+      Math.min(dw, dh) * 0.32,
+      dx + dw / 2,
+      dy + dh / 2,
+      Math.max(dw, dh) * 0.7
+    );
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(20, 28, 50, 0.35)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  // Double hairline plate frame around the photo.
+  ctx.strokeStyle = "rgba(46, 60, 95, 0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(dx, dy, dw, dh);
+  ctx.strokeStyle = "rgba(46, 60, 95, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(dx + 6, dy + 6, dw - 12, dh - 12);
+
+  // Optional circular inset (e.g. chess1 thumbnail beside chess3 hero).
+  if (
+    overlayImg?.complete &&
+    (overlayImg.naturalWidth || overlayImg.width)
+  ) {
+    const cx = W * overlayCenter.x;
+    const cy = H * overlayCenter.y;
+    const radius =
+      ABOUT_ME_PORTRAIT_CIRCLE_RADIUS *
+      overlayRadiusScale *
+      (W / 1024);
+    drawImageCircularCover(ctx, overlayImg, cx, cy, radius);
+
+    // Subtle navy wash inside the overlay to match the plate's twilight.
+    if (twilightWashAlpha > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = `rgba(46, 60, 95, ${twilightWashAlpha})`;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+    }
+
+    // Double concentric ring around the overlay, echoing the About-Me portrait frame.
+    ctx.strokeStyle = "rgba(46, 60, 95, 0.6)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(46, 60, 95, 0.28)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 6, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Caption — Playfair italic, centered under the photo.
+  if (captionLines.length) {
+    const fontFamily =
+      '"Playfair Display", Georgia, "Times New Roman", serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const fontSize = Math.round(W * 0.04);
+    ctx.font = `italic 500 ${fontSize}px ${fontFamily}`;
+    const lineHeight = Math.round(fontSize * 1.18);
+    let textY = dy + dh + H * 0.04;
+    captionLines.forEach((line, idx) => {
+      ctx.fillStyle = `rgba(46, 60, 95, ${idx === 0 ? 0.82 : 0.6})`;
+      ctx.fillText(line, W / 2, textY);
+      textY += lineHeight;
+    });
+  }
+
+  // Storybook chapter frame on top of everything.
+  if (chapterFrameOpts) {
+    drawChapterFrame(ctx, W, H, chapterFrameOpts);
+  }
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Per-leaf storybook plate for the blank leaves after Exercise 1.
+ *  Each plate uses the shared chapter frame (title mode), drifts a few
+ *  constellation marks behind it, and centers a large italic subtitle plus a
+ *  poetic placeholder line — turning the previously-empty pages into proper
+ *  chapter title plates. `finale = true` flips the page to a navy ground for
+ *  the very last page of the book, mirroring the front cover.            */
+function createBlankChapterTexture(opts) {
+  const {
+    chapterLabel = "",
+    subtitle = "",
+    placeholder = "",
+    closingLine = "",
+    finale = false,
+    seed = 13,
+  } = opts || {};
+  const W = 1024;
+  const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Ground: light palette for normal chapter plates, navy for the finale.
+  ctx.fillStyle = finale ? "#2e3c5f" : "#dde1ea";
+  ctx.fillRect(0, 0, W, H);
+
+  // Soft palette halo to keep the page from reading as a flat fill.
+  const halo = ctx.createRadialGradient(
+    W * 0.5,
+    H * 0.5,
+    W * 0.1,
+    W * 0.5,
+    H * 0.5,
+    W * 0.85
+  );
+  if (finale) {
+    halo.addColorStop(0, "rgba(148, 159, 182, 0.18)");
+    halo.addColorStop(1, "rgba(46, 60, 95, 0)");
+  } else {
+    halo.addColorStop(0, "rgba(255, 255, 255, 0.45)");
+    halo.addColorStop(1, "rgba(46, 60, 95, 0)");
+  }
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  // Deterministic constellation scatter — varies per chapter via seed.
+  let rng = (seed * 2654435761) >>> 0;
+  const rand = () => {
+    rng = (rng * 1664525 + 1013904223) >>> 0;
+    return ((rng >>> 0) & 0xffffff) / 0xffffff;
+  };
+
+  const dotInk = finale ? "rgba(200, 204, 215," : "rgba(46, 60, 95,";
+  // Scatter ~22 small dots within the inner frame.
+  for (let i = 0; i < 22; i++) {
+    const x = W * 0.12 + rand() * W * 0.76;
+    const y = H * 0.16 + rand() * H * 0.68;
+    const r = 1.1 + rand() * 1.8;
+    const a = finale ? 0.22 + rand() * 0.25 : 0.16 + rand() * 0.22;
+    ctx.fillStyle = `${dotInk} ${a})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // A handful of small sparkle stars.
+  for (let i = 0; i < 4; i++) {
+    const x = W * 0.15 + rand() * W * 0.7;
+    const y = H * 0.18 + rand() * H * 0.6;
+    const size = 9 + rand() * 7;
+    const a = finale ? 0.55 : 0.4;
+    ctx.fillStyle = `${dotInk} ${a})`;
+    drawStarPath(ctx, x, y, size);
+  }
+
+  // Storybook chapter frame (title mode) over the constellation scatter.
+  drawChapterFrame(ctx, W, H, {
+    mode: "title",
+    chapterLabel,
+    closingLine,
+    inkOnLight: !finale,
+  });
+
+  const fontFamily = '"Playfair Display", Georgia, "Times New Roman", serif';
+  const inkAlpha = (a) =>
+    finale ? `rgba(200, 204, 215, ${a})` : `rgba(46, 60, 95, ${a})`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Large display subtitle (e.g. "Incomplete.", "Inconsistency.").
+  // Supports explicit line breaks via "\n" for two-line chapter titles.
+  if (subtitle) {
+    ctx.fillStyle = inkAlpha(0.85);
+    const subtitleSize = Math.round(W * 0.082);
+    ctx.font = `italic 500 ${subtitleSize}px ${fontFamily}`;
+    const subtitleLines = String(subtitle).split("\n");
+    const lineHeight = subtitleSize * 0.96;
+    const startY = H * 0.4 - ((subtitleLines.length - 1) * lineHeight) / 2;
+    subtitleLines.forEach((line, idx) => {
+      ctx.fillText(line, W / 2, startY + idx * lineHeight);
+    });
+  }
+
+  // Centered display star anchor between subtitle and placeholder.
+  ctx.fillStyle = inkAlpha(finale ? 0.5 : 0.4);
+  drawStarPath(ctx, W / 2, H * 0.52, 26);
+
+  // Placeholder/poetic line
+  if (placeholder) {
+    ctx.fillStyle = inkAlpha(0.62);
+    ctx.font = `italic 400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+    ctx.fillText(placeholder, W / 2, H * 0.62);
+  }
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Per-blank-leaf chapter configuration — each leaf side gets its own title
+ *  card. Indexed by Page.number, with .front / .back for the two faces.    */
+const BLANK_CHAPTER_CONFIG = {
+  3: {
+    front: {
+      chapterLabel: "CHAPTER THE THIRD",
+      subtitle: "Project 1:\niPhone Modeling",
+      placeholder: "Modeling from Reference",
+      closingLine: "March 1 2026",
+      seed: 31,
+    },
+    back: {
+      chapterLabel: "CHAPTER THE FOURTH",
+      subtitle: "Project 3:\nChess",
+      placeholder: "— pieces of glass, pieces of mind —",
+      closingLine: "in which strategy meets glass.",
+      seed: 41,
+    },
+  },
+  4: {
+    front: {
+      chapterLabel: "CHAPTER THE FOURTH",
+      subtitle: "Project 3:\nChess",
+      placeholder: "— pieces of glass, pieces of mind —",
+      closingLine: "in which strategy meets glass.",
+      seed: 42,
+    },
+    back: {
+      chapterLabel: "CHAPTER THE FIFTH",
+      subtitle: "Final Proj.",
+      placeholder: "— the castle, in twilight —",
+      closingLine: "in which the kingdom rises.",
+      seed: 51,
+    },
+  },
+  5: {
+    front: {
+      chapterLabel: "CHAPTER THE FIFTH",
+      subtitle: "Final Proj.",
+      placeholder: "— the castle, in twilight —",
+      closingLine: "in which the kingdom rises.",
+      seed: 52,
+    },
+    back: {
+      chapterLabel: "FIN.",
+      subtitle: "Fin.",
+      placeholder: "— and they lived happily, in twilight —",
+      closingLine: "thank you, for reading along.",
+      finale: true,
+      seed: 99,
+    },
+  },
+};
 
 const SPINE_PINSTRIPE_TEXTURE = createSpinePinstripeTexture();
 const CONSTELLATION_ENDPAPER_TEXTURE = createConstellationEndpaperTexture();
@@ -902,6 +1357,13 @@ pages.forEach((page, index) => {
     useTexture.preload(`/textures/pj1-2.png`);
     useTexture.preload(`/textures/${page.back}.jpg`);
     useTexture.preload(`/textures/pj1-3.png`);
+  } else if (index === 3 || index === 4) {
+    // Chapter IV (Project 3 — Chess) spread spans leaf 3 back + leaf 4 front.
+    // Both leaves preload the same three source images so either Page mount
+    // can composite immediately without a second network round-trip.
+    useTexture.preload(`/textures/chess1.jpg`);
+    useTexture.preload(`/textures/chess2.jpg`);
+    useTexture.preload(`/textures/chess3.jpg`);
   } else if (index > 2) {
     useTexture.preload(BLANK_LEAF_TEXTURE_PATH);
   } else {
@@ -918,6 +1380,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   // Leaf 2 (Exercise 1): front pj1-2 base + pj1-3 circular overlay; back is photo jpg
   const isDsgn1030Page = number === 2;
   const isBlankLeafAfterExercise1 = number > 2;
+  // Chapter IV (Project 3 — Chess) spans leaf 3 back + leaf 4 front. Both
+  // leaves load the same three source photos so each Page can composite the
+  // face it owns from a shared image cache.
+  const isChessSpreadPage = number === 3 || number === 4;
 
   const texturePaths = isPage0Back
     ? [`/textures/${front}.jpg`, "/textures/Bailey.png"]
@@ -928,6 +1394,12 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         "/textures/pj1-2.png",
         `/textures/${back}.jpg`,
         "/textures/pj1-3.png",
+      ]
+    : isChessSpreadPage
+    ? [
+        "/textures/chess1.jpg",
+        "/textures/chess2.jpg",
+        "/textures/chess3.jpg",
       ]
     : isBlankLeafAfterExercise1
     ? [BLANK_LEAF_TEXTURE_PATH, BLANK_LEAF_TEXTURE_PATH]
@@ -943,6 +1415,20 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   const [dsgn1030BackTexture, setDsgn1030BackTexture] = useState(null);
   const [coverTexture, setCoverTexture] = useState(null);
   const [coverBackTexture, setCoverBackTexture] = useState(null);
+  const [blankFrontTexture, setBlankFrontTexture] = useState(null);
+  const [blankBackTexture, setBlankBackTexture] = useState(null);
+  // Chess spread (Chapter IV — Project 3). On leaf 3 we composite the back
+  // face; on leaf 4 we composite the front face. Both share the same source
+  // image trio (chess1/chess2/chess3) loaded into picture / picture2 / picture3.
+  const [chessPlateTexture, setChessPlateTexture] = useState(null);
+  // Live <video> stack for the back of leaf 2 (Project 1 iPhone reel).
+  // We keep the <video> + an off-DOM <canvas> as refs, and expose a
+  // CanvasTexture in state. useFrame redraws the canvas with the latest
+  // video frame (cover-fit) while the page is opened.
+  const videoElRef = useRef(null);
+  const videoCanvasRef = useRef(null);
+  const videoReadyRef = useRef(false);
+  const [videoBackTexture, setVideoBackTexture] = useState(null);
 
   // Generate the storybook cover + its "Dramatis Personae" inside page once
   // Playfair Display has loaded. Both rely on crisp serif rendering, so we
@@ -981,25 +1467,187 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     };
   }, [isPage0Back]);
 
+  // Blank leaves after Exercise 1 — each side becomes its own storybook
+  // chapter title plate ("Incomplete.", "Inconsistency.", "Final Proj.",
+  // and the finale FIN page on the very last face). Generated lazily once
+  // Playfair Display is ready so the chapter typesetting is crisp.
+  useEffect(() => {
+    if (!isBlankLeafAfterExercise1) return;
+    const config = BLANK_CHAPTER_CONFIG[number];
+    if (!config) return;
+    let cancelled = false;
+    const generate = () => {
+      if (cancelled) return;
+      const front = createBlankChapterTexture(config.front);
+      const back = createBlankChapterTexture(config.back);
+      setBlankFrontTexture((prev) => {
+        prev?.dispose?.();
+        return front;
+      });
+      setBlankBackTexture((prev) => {
+        prev?.dispose?.();
+        return back;
+      });
+    };
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(generate);
+    } else {
+      generate();
+    }
+    return () => {
+      cancelled = true;
+      setBlankFrontTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+      setBlankBackTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isBlankLeafAfterExercise1, number]);
+
+  // Chess spread plates — Chapter IV / Project 3.
+  //
+  //  leaf 3 back  (verso) ── chess2.jpg as a top-down "the board, in plan."
+  //  leaf 4 front (recto) ── chess3.jpg hero shot with chess1.jpg circular
+  //                          inset, captioned "a duel of glass."
+  //
+  // Both faces share the chess1 / chess2 / chess3 textures preloaded into
+  // picture / picture2 / picture3 for this leaf, so the composite can happen
+  // immediately once the page mounts and Playfair is ready.
+  useEffect(() => {
+    if (!isChessSpreadPage) return;
+    if (!picture || !picture2 || !picture3) return;
+    let cancelled = false;
+
+    const compose = () => {
+      if (cancelled) return;
+      const chess1 = picture.image;
+      const chess2 = picture2.image;
+      const chess3 = picture3.image;
+      if (!chess1?.complete || !chess2?.complete || !chess3?.complete) return;
+
+      let tex;
+      if (number === 3) {
+        // Leaf 3 back: chess2 as the surveyor's map plate.
+        tex = createPhotoPlateTexture({
+          img: chess2,
+          captionLines: [
+            "PROJECT 2: Recursive Chessboard"
+          ],
+          chapterFrameOpts: {
+            mode: "interior",
+            chapterLabel: "CHAPTER IV",
+            subtitle: "PROJECT 2: Recursive Chessboard",
+          },
+          topMarginRatio: 0.2,
+          maxImageWidthRatio: 0.72,
+          maxImageHeightRatio: 0.58,
+          twilightWashAlpha: 0.18,
+        });
+      } else if (number === 4) {
+        // Leaf 4 front: chess3 hero close-up + chess1 circular inset
+        // positioned in the lower-right plate area like a portal.
+        tex = createPhotoPlateTexture({
+          img: chess3,
+          overlayImg: chess1,
+          overlayCenter: { x: 0.78, y: 0.8 },
+          overlayRadiusScale: 0.55,
+          captionLines: [
+            "Environmental Renders with Arnold",
+            "Mar 29 2026",
+          ],
+          chapterFrameOpts: {
+            mode: "interior",
+            chapterLabel: "CHAPTER IV",
+            subtitle: "PROJECT 3",
+          },
+          topMarginRatio: 0.18,
+          maxImageWidthRatio: 0.78,
+          maxImageHeightRatio: 0.5,
+          twilightWashAlpha: 0.22,
+        });
+      }
+
+      if (!tex) return;
+      setChessPlateTexture((prev) => {
+        prev?.dispose?.();
+        return tex;
+      });
+    };
+
+    const whenReady = () => {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(compose);
+      } else {
+        compose();
+      }
+    };
+
+    // Compose now if all three images are decoded, otherwise wait on the
+    // slowest one. Three.js's useTexture sets `complete` once the underlying
+    // HTMLImageElement has decoded.
+    const imgs = [picture.image, picture2.image, picture3.image];
+    const pending = imgs.filter((im) => im && !im.complete);
+    if (pending.length === 0) {
+      whenReady();
+    } else {
+      pending.forEach((im) => {
+        im.addEventListener("load", whenReady, { once: true });
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      imgs.forEach((im) => {
+        if (im) im.removeEventListener("load", whenReady);
+      });
+      setChessPlateTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isChessSpreadPage, number, picture, picture2, picture3]);
+
   // Twilight wash for Exercise 1's back photo (DSC00983.jpg). Composes the
-  // photo cover-fit on a light base, multiplies a navy overlay, and applies a
-  // soft vignette so the page reads as an illustrated plate.
+  // photo cover-fit on a light base, multiplies a navy overlay, applies a
+  // soft vignette, then overlays the shared chapter frame (running head for
+  // Chapter the Third — Incomplete., the verso facing the next chapter).
+  //
+  // We wait for `document.fonts.ready` so the Playfair-typeset running head
+  // does not flash in the Georgia fallback.
   useEffect(() => {
     if (!isDsgn1030Page || !picture2) return;
+    let cancelled = false;
     function composeBack() {
-      const tex = createTwilightPhotoTexture(picture2.image);
+      if (cancelled) return;
+      const tex = createTwilightPhotoTexture(picture2.image, {
+        mode: "interior",
+        chapterLabel: "CHAPTER III",
+        subtitle: "INCOMPLETE.",
+        inkOnLight: false,
+      });
       if (!tex) return;
       setDsgn1030BackTexture((prev) => {
         prev?.dispose?.();
         return tex;
       });
     }
+    function whenReady() {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(composeBack);
+      } else {
+        composeBack();
+      }
+    }
     if (picture2.image?.complete) {
-      composeBack();
+      whenReady();
     } else if (picture2.image) {
-      picture2.image.onload = composeBack;
+      picture2.image.onload = whenReady;
     }
     return () => {
+      cancelled = true;
       if (picture2.image) picture2.image.onload = null;
       setDsgn1030BackTexture((prev) => {
         prev?.dispose?.();
@@ -1008,81 +1656,212 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     };
   }, [isDsgn1030Page, picture2]);
   
-  // Create circular cropped texture for page 1's front
+  // About Me front — "Chapter the First" portrait plate. Composites the
+  // circular selfportrait onto a 1024 × (1024 × H/W) canvas (matches page
+  // aspect, so the crop is a true circle), wraps it in a double-ring frame
+  // with four cardinal star ornaments, applies a subtle navy multiply wash
+  // for tonal cohesion with the book, and adds Playfair header/caption/footer.
   useEffect(() => {
-    if (isAboutMePage && picture) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 1024;
-      const ctx = canvas.getContext('2d');
-      
-      // Fill with palette light cool gray
-      ctx.fillStyle = '#c8ccd7';
-      ctx.fillRect(0, 0, 1024, 1024);
-      
-      // Wait for image to load
-      if (picture.image && picture.image.complete) {
-        createCircularCrop();
-      } else if (picture.image) {
-        picture.image.onload = createCircularCrop;
+    if (!isAboutMePage || !picture) return;
+
+    const W = 1024;
+    const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    function compose() {
+      const img = picture.image;
+      if (!img?.complete || !(img.naturalWidth || img.width)) return;
+      const fontFamily =
+        '"Playfair Display", Georgia, "Times New Roman", serif';
+
+      // Light palette ground
+      ctx.fillStyle = "#c8ccd7";
+      ctx.fillRect(0, 0, W, H);
+
+      // Soft radial halo behind the portrait — barely visible, adds depth.
+      const halo = ctx.createRadialGradient(
+        W / 2,
+        H * 0.41,
+        W * 0.1,
+        W / 2,
+        H * 0.41,
+        W * 0.55
+      );
+      halo.addColorStop(0, "rgba(200, 204, 215, 0)");
+      halo.addColorStop(1, "rgba(46, 60, 95, 0.07)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, W, H);
+
+      // Double inset border (matches other pages' frame system).
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(W * 0.07, H * 0.055, W * 0.86, H * 0.89);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.25)";
+      ctx.strokeRect(W * 0.085, H * 0.07, W * 0.83, H * 0.86);
+
+      // === Header ===
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(46, 60, 95, 0.75)";
+      ctx.font = `italic 400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+      ctx.fillText("·  ✦  ·", W / 2, H * 0.085);
+
+      ctx.fillStyle = "rgba(46, 60, 95, 0.65)";
+      ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+      drawTextWithLetterSpacing(
+        ctx,
+        "CHAPTER THE FIRST",
+        W / 2,
+        H * 0.115,
+        W * 0.018
+      );
+
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.4)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(W * 0.42, H * 0.14);
+      ctx.lineTo(W * 0.58, H * 0.14);
+      ctx.stroke();
+
+      // === Portrait — double ring frame, circular crop, twilight wash ===
+      const circleRadius = 290;
+      const centerX = W / 2;
+      const centerY = H * 0.41;
+
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.35)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, circleRadius + 14, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, circleRadius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+      ctx.clip();
+
+      const imgAspect = (img.naturalWidth || img.width) / (img.naturalHeight || img.height);
+      let dw;
+      let dh;
+      if (imgAspect > 1) {
+        dh = circleRadius * 2;
+        dw = dh * imgAspect;
+      } else {
+        dw = circleRadius * 2;
+        dh = dw / imgAspect;
       }
-      
-      function createCircularCrop() {
-        // Clear and redraw background
-        ctx.fillStyle = '#c8ccd7';
-        ctx.fillRect(0, 0, 1024, 1024);
-        
-        // Calculate circle size and position (centered)
-        const circleRadius = 350; // Adjust size as needed
-        const centerX = 512; // Center of 1024x1024 canvas
-        const centerY = 512;
-        
-        // Create circular clipping path
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
-        ctx.clip();
-        
-        // Calculate source image dimensions to maintain aspect ratio
-        const img = picture.image;
-        const imgAspect = img.width / img.height;
-        let drawWidth, drawHeight, drawX, drawY;
-        
-        if (imgAspect > 1) {
-          // Image is wider than tall
-          drawHeight = circleRadius * 2;
-          drawWidth = drawHeight * imgAspect;
-          drawX = centerX - drawWidth / 2;
-          drawY = centerY - drawHeight / 2;
-        } else {
-          // Image is taller than wide
-          drawWidth = circleRadius * 2;
-          drawHeight = drawWidth / imgAspect;
-          drawX = centerX - drawWidth / 2;
-          drawY = centerY - drawHeight / 2;
-        }
-        
-        // Draw the image
-        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-        ctx.restore();
-        
-        // Create texture
-        const texture = new CanvasTexture(canvas);
-        texture.colorSpace = SRGBColorSpace;
-        setCircularTexture(texture);
-      }
+      const dx = centerX - dw / 2;
+      const dy = centerY - dh / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+
+      // Subtle cool/navy multiply wash so the B&W portrait reads as part of
+      // the navy palette rather than a foreign element.
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = "rgba(46, 60, 95, 0.2)";
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+
+      // Four cardinal sparkles around the ring.
+      ctx.fillStyle = "rgba(46, 60, 95, 0.55)";
+      const starR = 18;
+      const dist = circleRadius + 38;
+      drawStarPath(ctx, centerX, centerY - dist, starR);
+      drawStarPath(ctx, centerX, centerY + dist, starR);
+      drawStarPath(ctx, centerX - dist, centerY, starR);
+      drawStarPath(ctx, centerX + dist, centerY, starR);
+
+      // === Caption ===
+      ctx.fillStyle = "#2e3c5f";
+      ctx.textAlign = "center";
+      ctx.font = `italic 500 ${Math.round(W * 0.07)}px ${fontFamily}`;
+      ctx.fillText("Bailey Koo", W / 2, H * 0.7);
+
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.3)";
+      ctx.beginPath();
+      ctx.moveTo(W * 0.43, H * 0.735);
+      ctx.lineTo(W * 0.57, H * 0.735);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(46, 60, 95, 0.7)";
+      ctx.font = `italic 400 ${Math.round(W * 0.026)}px ${fontFamily}`;
+      ctx.fillText("the storyteller", W / 2, H * 0.77);
+
+      // === Footer ===
+      ctx.strokeStyle = "rgba(46, 60, 95, 0.3)";
+      ctx.beginPath();
+      ctx.moveTo(W * 0.42, H * 0.85);
+      ctx.lineTo(W * 0.58, H * 0.85);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(46, 60, 95, 0.65)";
+      ctx.font = `italic 400 ${Math.round(W * 0.024)}px ${fontFamily}`;
+      ctx.fillText("·  ✦  ·", W / 2, H * 0.88);
+
+      ctx.fillStyle = "rgba(46, 60, 95, 0.55)";
+      ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+      ctx.fillText("in which I am introduced.", W / 2, H * 0.91);
+
+      const texture = new CanvasTexture(canvas);
+      texture.colorSpace = SRGBColorSpace;
+      texture.needsUpdate = true;
+      setCircularTexture((prev) => {
+        prev?.dispose?.();
+        return texture;
+      });
     }
+
+    if (picture.image?.complete) {
+      compose();
+    } else if (picture.image) {
+      picture.image.onload = compose;
+    }
+    // Re-compose once Playfair has finished loading so the header/caption
+    // upgrade from Georgia fallback to crisp Playfair.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        if (picture.image?.complete) compose();
+      });
+    }
+
+    return () => {
+      if (picture.image) picture.image.onload = null;
+      setCircularTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
   }, [isAboutMePage, picture]);
 
-  // About Me back: pj1-1 (margin: PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO only)
+  // About Me back: pj1-1 (margin: PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO only).
+  // This page is the verso of Chapter the Second (Exercise 1) — the user sees
+  // it on the left when they open to Exercise 1 in the nav. So it carries a
+  // running head pointing to Chapter II.
   useEffect(() => {
     if (!isAboutMePage || !picture2) return;
+    let cancelled = false;
 
     function composeAboutMeBack() {
+      if (cancelled) return;
       const texture = createPj1TopThirdCanvasTextureFromImage(
         picture2.image,
         PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO,
-        ["In-Class Exercise:", "Basic Table Scene"]
+        ["In-Class Exercise:", "Basic Table Scene"],
+        undefined,
+        {
+          mode: "interior",
+          chapterLabel: "CHAPTER II",
+          subtitle: "EXERCISE 1",
+        }
       );
       if (!texture) return;
       setAboutMeBackTexture((prev) => {
@@ -1091,13 +1870,22 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       });
     }
 
+    function whenReady() {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(composeAboutMeBack);
+      } else {
+        composeAboutMeBack();
+      }
+    }
+
     if (picture2.image?.complete) {
-      composeAboutMeBack();
+      whenReady();
     } else if (picture2.image) {
-      picture2.image.onload = composeAboutMeBack;
+      picture2.image.onload = whenReady;
     }
 
     return () => {
+      cancelled = true;
       if (picture2.image) picture2.image.onload = null;
       setAboutMeBackTexture((prev) => {
         prev?.dispose?.();
@@ -1106,11 +1894,15 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     };
   }, [isAboutMePage, picture2]);
 
-  // Exercise 1 front: pj1-2 composited + pj1-3 circular overlay on top
+  // Exercise 1 front: pj1-2 composited + pj1-3 circular overlay on top.
+  // This is the recto of Chapter the Second — its running head matches the
+  // verso (leaf 1 back / pj1-1) so the open spread reads as one chapter.
   useEffect(() => {
     if (!isDsgn1030Page || !picture || !picture3) return;
+    let cancelled = false;
 
     function composeDsgnFront() {
+      if (cancelled) return;
       const base = picture.image;
       const overlay = picture3.image;
       if (!base?.complete || !base.width) return;
@@ -1121,7 +1913,12 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         base,
         PJ1_DSGN_1030_FRONT_TOP_MARGIN_RATIO,
         undefined,
-        overlay
+        overlay,
+        {
+          mode: "interior",
+          chapterLabel: "CHAPTER II",
+          subtitle: "EXERCISE 1",
+        }
       );
       if (!texture) return;
       setDsgn1030FrontTexture((prev) => {
@@ -1130,12 +1927,20 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       });
     }
 
-    composeDsgnFront();
-    const run = () => composeDsgnFront();
-    if (picture.image) picture.image.onload = run;
-    if (picture3.image) picture3.image.onload = run;
+    function whenReady() {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(composeDsgnFront);
+      } else {
+        composeDsgnFront();
+      }
+    }
+
+    whenReady();
+    if (picture.image) picture.image.onload = whenReady;
+    if (picture3.image) picture3.image.onload = whenReady;
 
     return () => {
+      cancelled = true;
       if (picture.image) picture.image.onload = null;
       if (picture3.image) picture3.image.onload = null;
       setDsgn1030FrontTexture((prev) => {
@@ -1144,6 +1949,94 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       });
     };
   }, [isDsgn1030Page, picture, picture3]);
+
+  // Project 1 iPhone reel — replaces the back face of leaf 2 with a live
+  // <video> element drawn cover-fit into an off-screen canvas every frame.
+  // The video is muted + looped so the browser allows programmatic playback,
+  // and decoding pauses when the page is closed so we don't burn frames on
+  // an invisible texture.
+  useEffect(() => {
+    if (!isDsgn1030Page) return;
+
+    const W = 1024;
+    const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#0a0f1f";
+    ctx.fillRect(0, 0, W, H);
+    videoCanvasRef.current = canvas;
+
+    const tex = new CanvasTexture(canvas);
+    tex.colorSpace = SRGBColorSpace;
+
+    const video = document.createElement("video");
+    video.src = "/textures/Project1iPhone.mp4";
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.crossOrigin = "anonymous";
+    videoElRef.current = video;
+
+    const onReady = () => {
+      videoReadyRef.current = true;
+      // Paint the first frame immediately so the page doesn't flash from
+      // the previous twilight texture into black before useFrame ticks.
+      if (video.videoWidth && video.videoHeight) {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        const scale = Math.max(W / vw, H / vh);
+        const dw = vw * scale;
+        const dh = vh * scale;
+        const dx = (W - dw) / 2;
+        const dy = (H - dh) / 2;
+        ctx.fillStyle = "#0a0f1f";
+        ctx.fillRect(0, 0, W, H);
+        ctx.drawImage(video, dx, dy, dw, dh);
+        tex.needsUpdate = true;
+      }
+      setVideoBackTexture(tex);
+    };
+    video.addEventListener("loadeddata", onReady);
+    if (video.readyState >= 2) onReady();
+
+    return () => {
+      videoReadyRef.current = false;
+      video.removeEventListener("loadeddata", onReady);
+      try {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      } catch {
+        /* ignore */
+      }
+      videoElRef.current = null;
+      videoCanvasRef.current = null;
+      tex.dispose();
+      setVideoBackTexture(null);
+    };
+  }, [isDsgn1030Page]);
+
+  // Play/pause the iPhone reel based on whether leaf 2 is currently flipped
+  // open (its back face visible). Pausing stops the decode loop and frees
+  // GPU/CPU when the page is out of view.
+  useEffect(() => {
+    if (!isDsgn1030Page) return;
+    const video = videoElRef.current;
+    if (!video) return;
+    if (opened) {
+      const p = video.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      try {
+        video.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [opened, isDsgn1030Page, videoBackTexture]);
 
   if (picture && picture2) {
     picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
@@ -1225,18 +2118,61 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       skinnedMeshRef.current.material[5].color = whiteColor;
       skinnedMeshRef.current.material[5].map = coverBackTexture || picture2;
     } else if (isDsgn1030Page) {
+      // Push the latest video frame into the back-face canvas while the
+      // page is opened. Drawn cover-fit so the iPhone reel keeps its
+      // native aspect ratio regardless of the page's portrait shape.
+      if (
+        opened &&
+        videoBackTexture &&
+        videoReadyRef.current &&
+        videoElRef.current &&
+        videoCanvasRef.current
+      ) {
+        const video = videoElRef.current;
+        const canvas = videoCanvasRef.current;
+        const ctx = canvas.getContext("2d");
+        const W = canvas.width;
+        const H = canvas.height;
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (vw && vh) {
+          const scale = Math.max(W / vw, H / vh);
+          const dw = vw * scale;
+          const dh = vh * scale;
+          const dx = (W - dw) / 2;
+          const dy = (H - dh) / 2;
+          ctx.fillStyle = "#0a0f1f";
+          ctx.fillRect(0, 0, W, H);
+          ctx.drawImage(video, dx, dy, dw, dh);
+          videoBackTexture.needsUpdate = true;
+        }
+      }
+
       skinnedMeshRef.current.material[4].color = whiteColor;
       skinnedMeshRef.current.material[4].map =
         dsgn1030FrontTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
       skinnedMeshRef.current.material[5].map =
-        dsgn1030BackTexture || picture2;
+        videoBackTexture || dsgn1030BackTexture || picture2;
     } else if (isBlankLeafAfterExercise1) {
-      // Endpapers: light palette ground + scattered constellation marks.
+      // Per-leaf chapter title plates ("Project 2 · iPhone", "Project 3 ·
+      // Chess", "Final Proj." and the navy FIN finale). Falls back to the
+      // shared constellation endpaper until Playfair has loaded and the
+      // per-leaf canvas finishes compositing.
+      //
+      // On the chess spread (Chapter IV / Project 3), the chess photo plate
+      // takes precedence over the blank chapter plate for the face that
+      // actually carries the spread artwork:
+      //   • leaf 3 (number === 3): chess plate on the BACK face
+      //   • leaf 4 (number === 4): chess plate on the FRONT face
+      const chessOnFront = number === 4 ? chessPlateTexture : null;
+      const chessOnBack = number === 3 ? chessPlateTexture : null;
       skinnedMeshRef.current.material[4].color = whiteColor;
-      skinnedMeshRef.current.material[4].map = CONSTELLATION_ENDPAPER_TEXTURE;
+      skinnedMeshRef.current.material[4].map =
+        chessOnFront || blankFrontTexture || CONSTELLATION_ENDPAPER_TEXTURE;
       skinnedMeshRef.current.material[5].color = whiteColor;
-      skinnedMeshRef.current.material[5].map = CONSTELLATION_ENDPAPER_TEXTURE;
+      skinnedMeshRef.current.material[5].map =
+        chessOnBack || blankBackTexture || CONSTELLATION_ENDPAPER_TEXTURE;
     } else {
       // Generic photo pages — apply gentle ivory wash so stray photos stay in palette
       skinnedMeshRef.current.material[4].color = PAGE_PAPER_TINT;
