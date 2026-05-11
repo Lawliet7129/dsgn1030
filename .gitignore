@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Large uncompressed GLB — use Draco build only
+public/disneycastle.glb
