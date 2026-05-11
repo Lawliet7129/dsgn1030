@@ -19,10 +19,12 @@ import {
   Vector3,
 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
-import { pageAtom, pageNames, pages, showAboutMeAtom } from "./UI";
-
-/** Sidebar index of the "Final Proj." button, derived so renames stay safe. */
-const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Proj.");
+import {
+  FINAL_PROJ_PAGE_INDEX,
+  pageAtom,
+  pages,
+  showAboutMeAtom,
+} from "./UI";
 /** ms to wait after the page settles before treating the flip motion as ended. */
 const FLIP_SETTLE_DELAY_MS = 450;
 const DISNEY_CASTLE_GLB_PATH = "/disneycastle-draco.glb";
@@ -747,29 +749,33 @@ export const Book = ({ ...props }) => {
     return () => clearTimeout(timer);
   }, [page, delayedPage]);
 
+  const isFinalProjPage = page === FINAL_PROJ_PAGE_INDEX;
+
   return (
     <group {...props}>
-      <group rotation-y={-Math.PI / 2}>
-        {[...pages].map((pageData, index) => (
-          <Page
-            key={index}
-            page={delayedPage}
-            number={index}
-            opened={delayedPage > index}
-            bookClosed={delayedPage === 0 || delayedPage === pages.length}
-            {...pageData}
-          />
-        ))}
+      <group position-y={isFinalProjPage ? -1 : 0}>
+        <group rotation-y={-Math.PI / 2}>
+          {[...pages].map((pageData, index) => (
+            <Page
+              key={index}
+              page={delayedPage}
+              number={index}
+              opened={delayedPage > index}
+              bookClosed={delayedPage === 0 || delayedPage === pages.length}
+              {...pageData}
+            />
+          ))}
+        </group>
+        {showCastle && (
+          <Suspense fallback={null}>
+            <DisneyCastle
+              position={[0, 0, 0.5]}
+              rotation={[Math.PI / 2, -Math.PI / 2, 0]}
+              scale={0.15}
+            />
+          </Suspense>
+        )}
       </group>
-      {showCastle && (
-        <Suspense fallback={null}>
-          <DisneyCastle
-            position={[0, 0.5, 0.5]}
-            rotation={[Math.PI / 2, -Math.PI / 2, 0]}
-            scale={0.3}
-          />
-        </Suspense>
-      )}
     </group>
   );
 };

@@ -45,6 +45,9 @@ export const pageNames = [
   "Back Cover",
 ];
 
+/** Sidebar index for "Final Proj." — used by Canvas scene and book logic. */
+export const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Proj.");
+
 const AnimatedSpadeacePattern = () => {
   const [visibleCards, setVisibleCards] = useState(new Set());
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
