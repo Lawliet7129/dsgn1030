@@ -278,26 +278,332 @@ pageGeometry.setAttribute(
 );
 
 const whiteColor = new Color("white");
-/** Subtle navy highlight glow when hovering pages (palette: #3c4c77). */
-const emissiveColor = new Color("#3c4c77");
-/** Storybook ivory tint for page paper; multiplies subtly with photo textures. */
+/** Warm candlelight glow on hovered pages — a fairytale lit-by-window feel. */
+const emissiveColor = new Color("#e4cfa3");
+/** Muted warm gold for fore-edge / head / tail of the book block — "gilded leaf". */
+const GILDED_EDGE_COLOR = new Color("#d6cdb3");
+/** Storybook ivory tint for generic photo pages; multiplies with photo textures. */
 const PAGE_PAPER_TINT = new Color("#e6e9f0");
-/** Blank leaves after Exercise 1: gentle palette ivory (kept cohesive with paper). */
+/** Blank leaves after Exercise 1: gentle palette ivory base under constellation ink. */
 const BLANK_LEAF_COLOR = new Color("#dde1ea");
 const BLANK_LEAF_TEXTURE_PATH = "/textures/blank-white.png";
 
+// --- Canvas-composited texture helpers -------------------------------------
+// All textures below are generated once and shared across the book. They use
+// only fallback-safe glyphs (✦, ·, MMXXVII…) so they look right whether or not
+// Playfair Display has finished loading — the cover texture, which depends on
+// crisp Playfair rendering, is deferred until `document.fonts.ready` inside
+// the Page component instead of being created here at module load.
+
+function drawStarPath(ctx, cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(size / 100, size / 100);
+  ctx.beginPath();
+  ctx.moveTo(50, 4);
+  ctx.lineTo(54, 46);
+  ctx.lineTo(96, 50);
+  ctx.lineTo(54, 54);
+  ctx.lineTo(50, 96);
+  ctx.lineTo(46, 54);
+  ctx.lineTo(4, 50);
+  ctx.lineTo(46, 46);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawTextWithLetterSpacing(ctx, text, centerX, y, spacing) {
+  const chars = text.split("");
+  const widths = chars.map((c) => ctx.measureText(c).width);
+  const total =
+    widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
+  let x = centerX - total / 2;
+  for (let i = 0; i < chars.length; i++) {
+    ctx.fillText(chars[i], x + widths[i] / 2, y);
+    x += widths[i] + spacing;
+  }
+}
+
+/** Custom storybook cover — navy plate, double inset border, Playfair title
+ *  block with ornaments. Generated lazily (font-await) per Page mount. */
+function createCoverCanvasTexture() {
+  const canvasW = 1024;
+  const canvasH = Math.round((canvasW * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#2e3c5f";
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Deep radial vignette so the title block feels lit from center.
+  const vignette = ctx.createRadialGradient(
+    canvasW / 2,
+    canvasH / 2,
+    canvasW * 0.2,
+    canvasW / 2,
+    canvasH / 2,
+    canvasW * 0.85
+  );
+  vignette.addColorStop(0, "rgba(60, 76, 119, 0)");
+  vignette.addColorStop(1, "rgba(15, 22, 42, 0.6)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Double inset border (outer thick, inner hairline).
+  const borderStroke = "rgba(200, 204, 215, 0.62)";
+  ctx.strokeStyle = borderStroke;
+  ctx.lineWidth = 2;
+  const ox = canvasW * 0.07;
+  const oy = canvasH * 0.055;
+  ctx.strokeRect(ox, oy, canvasW - ox * 2, canvasH - oy * 2);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.45)";
+  const ix = canvasW * 0.085;
+  const iy = canvasH * 0.07;
+  ctx.strokeRect(ix, iy, canvasW - ix * 2, canvasH - iy * 2);
+
+  const fontFamily = '"Playfair Display", Georgia, "Times New Roman", serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Top ornament
+  ctx.fillStyle = "rgba(200, 204, 215, 0.85)";
+  ctx.font = `italic 400 ${Math.round(canvasW * 0.036)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", canvasW / 2, canvasH * 0.2);
+
+  // Title — Playfair small caps, palette light, wide tracking.
+  ctx.fillStyle = "#c8ccd7";
+  ctx.font = `500 ${Math.round(canvasW * 0.108)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "BAILEY  KOO",
+    canvasW / 2,
+    canvasH * 0.42,
+    canvasW * 0.02
+  );
+
+  // Hairline rule under the title.
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.55)";
+  ctx.lineWidth = 1;
+  const ruleY = canvasH * 0.485;
+  const ruleHalf = canvasW * 0.18;
+  ctx.beginPath();
+  ctx.moveTo(canvasW / 2 - ruleHalf, ruleY);
+  ctx.lineTo(canvasW / 2 + ruleHalf, ruleY);
+  ctx.stroke();
+
+  // Italic subtitle
+  ctx.fillStyle = "rgba(200, 204, 215, 0.92)";
+  ctx.font = `italic 400 ${Math.round(canvasW * 0.062)}px ${fontFamily}`;
+  ctx.fillText("DSGN 1030", canvasW / 2, canvasH * 0.555);
+
+  // Small caps tagline
+  ctx.fillStyle = "rgba(200, 204, 215, 0.7)";
+  ctx.font = `italic 400 ${Math.round(canvasW * 0.038)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "IN THREE CHAPTERS",
+    canvasW / 2,
+    canvasH * 0.615,
+    canvasW * 0.012
+  );
+
+  // Bottom ornament
+  ctx.fillStyle = "rgba(200, 204, 215, 0.7)";
+  ctx.font = `italic 400 ${Math.round(canvasW * 0.034)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", canvasW / 2, canvasH * 0.83);
+
+  // Year mark in roman numerals
+  ctx.fillStyle = "rgba(200, 204, 215, 0.55)";
+  ctx.font = `italic 400 ${Math.round(canvasW * 0.026)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "MMXXVII",
+    canvasW / 2,
+    canvasH * 0.88,
+    canvasW * 0.02
+  );
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Spine pinstripe — palette navy with horizontal hairline rules and a
+ *  centered ornament. Tall thin canvas so UVs map cleanly onto each page's
+ *  -x face; stacked pages line up into a continuous "ribbed hardcover" look. */
+function createSpinePinstripeTexture() {
+  const w = 32;
+  const h = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#2e3c5f";
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.3)";
+  ctx.lineWidth = 1;
+  const stripeRatios = [0.16, 0.34, 0.5, 0.66, 0.84];
+  for (const r of stripeRatios) {
+    const y = Math.round(h * r);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Constellation endpaper — soft scattered navy dots, a few small star marks,
+ *  hairline connecting lines, and a centered ornament. Replaces the flat
+ *  blank-leaf fill so pages 3–4 read as decorative endpapers. */
+function createConstellationEndpaperTexture() {
+  const w = 1024;
+  const h = Math.round((w * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#dde1ea";
+  ctx.fillRect(0, 0, w, h);
+
+  // Deterministic PRNG so the constellation doesn't reshuffle on re-renders.
+  let rng = 17;
+  const rand = () => {
+    rng = (rng * 1664525 + 1013904223) >>> 0;
+    return (rng & 0xffffff) / 0xffffff;
+  };
+
+  // Scattered small dots (the "stars" of the constellation).
+  ctx.fillStyle = "rgba(46, 60, 95, 0.2)";
+  const dots = [];
+  for (let i = 0; i < 28; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const r = 1.4 + rand() * 1.8;
+    dots.push({ x, y });
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Hairline strokes between a handful of dots — actual constellation lines.
+  ctx.strokeStyle = "rgba(46, 60, 95, 0.13)";
+  ctx.lineWidth = 0.7;
+  for (let i = 0; i < 6; i++) {
+    const a = dots[Math.floor(rand() * dots.length)];
+    const b = dots[Math.floor(rand() * dots.length)];
+    if (!a || !b) continue;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  // A few prominent sparkle stars on top.
+  ctx.fillStyle = "rgba(46, 60, 95, 0.22)";
+  for (let i = 0; i < 5; i++) {
+    const x = rand() * w;
+    const y = rand() * h;
+    const size = 12 + rand() * 10;
+    drawStarPath(ctx, x, y, size);
+  }
+
+  // Centered ornament so the page reads as a designed plate, not noise.
+  ctx.fillStyle = "rgba(46, 60, 95, 0.3)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `italic 400 ${Math.round(
+    w * 0.03
+  )}px "Playfair Display", Georgia, serif`;
+  ctx.fillText("·  ✦  ·", w / 2, h * 0.5);
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Twilight wash for photo pages: photo cover-fit on a light palette base,
+ *  multiplied with a navy overlay and a soft corner vignette so raw jpgs
+ *  feel like illustrated storybook plates. */
+function createTwilightPhotoTexture(imgEl) {
+  if (!imgEl?.complete || !(imgEl.naturalWidth || imgEl.width)) return null;
+  const w = 1024;
+  const h = Math.round((w * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#c8ccd7";
+  ctx.fillRect(0, 0, w, h);
+
+  const iw = imgEl.naturalWidth || imgEl.width;
+  const ih = imgEl.naturalHeight || imgEl.height;
+  const scale = Math.max(w / iw, h / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = (w - dw) / 2;
+  const dy = (h - dh) / 2;
+  ctx.drawImage(imgEl, dx, dy, dw, dh);
+
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = "rgba(46, 60, 95, 0.3)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "source-over";
+
+  const vignette = ctx.createRadialGradient(
+    w / 2,
+    h / 2,
+    w * 0.28,
+    w / 2,
+    h / 2,
+    w * 0.78
+  );
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(1, "rgba(20, 28, 50, 0.4)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+const SPINE_PINSTRIPE_TEXTURE = createSpinePinstripeTexture();
+const CONSTELLATION_ENDPAPER_TEXTURE = createConstellationEndpaperTexture();
+
 const pageMaterials = [
+  // +x (fore edge) — gilded warm leaf
+  new MeshStandardMaterial({
+    color: GILDED_EDGE_COLOR,
+    roughness: 0.55,
+  }),
+  // -x (spine) — palette navy with hairline pinstripes
   new MeshStandardMaterial({
     color: whiteColor,
+    map: SPINE_PINSTRIPE_TEXTURE,
+    roughness: 0.4,
   }),
+  // +y (head) — gilded
   new MeshStandardMaterial({
-    color: "#2e3c5f",
+    color: GILDED_EDGE_COLOR,
+    roughness: 0.55,
   }),
+  // -y (tail) — gilded
   new MeshStandardMaterial({
-    color: whiteColor,
-  }),
-  new MeshStandardMaterial({
-    color: whiteColor,
+    color: GILDED_EDGE_COLOR,
+    roughness: 0.55,
   }),
 ];
 
@@ -351,6 +657,62 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   const [circularTexture, setCircularTexture] = useState(null);
   const [aboutMeBackTexture, setAboutMeBackTexture] = useState(null);
   const [dsgn1030FrontTexture, setDsgn1030FrontTexture] = useState(null);
+  const [dsgn1030BackTexture, setDsgn1030BackTexture] = useState(null);
+  const [coverTexture, setCoverTexture] = useState(null);
+
+  // Generate the storybook cover once Playfair Display has loaded — keeps the
+  // title block crisp instead of rendering against the Georgia fallback.
+  useEffect(() => {
+    if (!isPage0Back) return;
+    let cancelled = false;
+    const generate = () => {
+      if (cancelled) return;
+      const tex = createCoverCanvasTexture();
+      setCoverTexture((prev) => {
+        prev?.dispose?.();
+        return tex;
+      });
+    };
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(generate);
+    } else {
+      generate();
+    }
+    return () => {
+      cancelled = true;
+      setCoverTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isPage0Back]);
+
+  // Twilight wash for Exercise 1's back photo (DSC00983.jpg). Composes the
+  // photo cover-fit on a light base, multiplies a navy overlay, and applies a
+  // soft vignette so the page reads as an illustrated plate.
+  useEffect(() => {
+    if (!isDsgn1030Page || !picture2) return;
+    function composeBack() {
+      const tex = createTwilightPhotoTexture(picture2.image);
+      if (!tex) return;
+      setDsgn1030BackTexture((prev) => {
+        prev?.dispose?.();
+        return tex;
+      });
+    }
+    if (picture2.image?.complete) {
+      composeBack();
+    } else if (picture2.image) {
+      picture2.image.onload = composeBack;
+    }
+    return () => {
+      if (picture2.image) picture2.image.onload = null;
+      setDsgn1030BackTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isDsgn1030Page, picture2]);
   
   // Create circular cropped texture for page 1's front
   useEffect(() => {
@@ -561,9 +923,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       skinnedMeshRef.current.material[5].map =
         aboutMeBackTexture || picture2;
     } else if (isPage0Back) {
-      // Page 0: front shows cover, back uses Bailey.png
+      // Page 0: front shows custom storybook cover canvas (or book-cover.jpg
+      // until Playfair has loaded and our cover is composited), back is Bailey.png
       skinnedMeshRef.current.material[4].color = whiteColor;
-      skinnedMeshRef.current.material[4].map = picture;
+      skinnedMeshRef.current.material[4].map = coverTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
       skinnedMeshRef.current.material[5].map = picture2;
     } else if (isDsgn1030Page) {
@@ -571,12 +934,14 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       skinnedMeshRef.current.material[4].map =
         dsgn1030FrontTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
-      skinnedMeshRef.current.material[5].map = picture2;
+      skinnedMeshRef.current.material[5].map =
+        dsgn1030BackTexture || picture2;
     } else if (isBlankLeafAfterExercise1) {
-      skinnedMeshRef.current.material[4].color = BLANK_LEAF_COLOR;
-      skinnedMeshRef.current.material[4].map = null;
-      skinnedMeshRef.current.material[5].color = BLANK_LEAF_COLOR;
-      skinnedMeshRef.current.material[5].map = null;
+      // Endpapers: light palette ground + scattered constellation marks.
+      skinnedMeshRef.current.material[4].color = whiteColor;
+      skinnedMeshRef.current.material[4].map = CONSTELLATION_ENDPAPER_TEXTURE;
+      skinnedMeshRef.current.material[5].color = whiteColor;
+      skinnedMeshRef.current.material[5].map = CONSTELLATION_ENDPAPER_TEXTURE;
     } else {
       // Generic photo pages — apply gentle ivory wash so stray photos stay in palette
       skinnedMeshRef.current.material[4].color = PAGE_PAPER_TINT;
