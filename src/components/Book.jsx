@@ -313,16 +313,26 @@ function drawStarPath(ctx, cx, cy, size) {
   ctx.restore();
 }
 
-function drawTextWithLetterSpacing(ctx, text, centerX, y, spacing) {
+/** Render `text` with extra spacing between characters. Honors the caller's
+ *  current `ctx.textAlign` ("left", "center", or "right") so the same helper
+ *  works for any anchoring. Restores `textAlign` to whatever the caller set. */
+function drawTextWithLetterSpacing(ctx, text, anchorX, y, spacing) {
+  const align = ctx.textAlign;
   const chars = text.split("");
   const widths = chars.map((c) => ctx.measureText(c).width);
   const total =
     widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
-  let x = centerX - total / 2;
+  let startX;
+  if (align === "center") startX = anchorX - total / 2;
+  else if (align === "right") startX = anchorX - total;
+  else startX = anchorX;
+  ctx.textAlign = "left";
+  let cur = startX;
   for (let i = 0; i < chars.length; i++) {
-    ctx.fillText(chars[i], x + widths[i] / 2, y);
-    x += widths[i] + spacing;
+    ctx.fillText(chars[i], cur, y);
+    cur += widths[i] + spacing;
   }
+  ctx.textAlign = align;
 }
 
 /** Custom storybook cover — navy plate, double inset border, Playfair title
@@ -431,6 +441,279 @@ function createCoverCanvasTexture() {
   texture.colorSpace = SRGBColorSpace;
   texture.needsUpdate = true;
   return texture;
+}
+
+/** Simple Disney-ish castle silhouette filled in the caller's current
+ *  `ctx.fillStyle`. Three towers (left, central spire, right) connected by
+ *  short walls. Used as a faint watermark on the inside cover canvas. */
+function drawCastleSilhouette(ctx, x, y, w) {
+  const h = w;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  ctx.lineTo(0, h * 0.72);
+  ctx.lineTo(w * 0.16, h * 0.72);
+  ctx.lineTo(w * 0.16, h * 0.48);
+  ctx.lineTo(w * 0.245, h * 0.32);
+  ctx.lineTo(w * 0.33, h * 0.48);
+  ctx.lineTo(w * 0.33, h * 0.72);
+  ctx.lineTo(w * 0.38, h * 0.72);
+  ctx.lineTo(w * 0.38, h * 0.58);
+  ctx.lineTo(w * 0.42, h * 0.58);
+  ctx.lineTo(w * 0.42, h * 0.26);
+  ctx.lineTo(w * 0.5, h * 0.06);
+  ctx.lineTo(w * 0.58, h * 0.26);
+  ctx.lineTo(w * 0.58, h * 0.58);
+  ctx.lineTo(w * 0.62, h * 0.58);
+  ctx.lineTo(w * 0.62, h * 0.72);
+  ctx.lineTo(w * 0.67, h * 0.72);
+  ctx.lineTo(w * 0.67, h * 0.48);
+  ctx.lineTo(w * 0.755, h * 0.32);
+  ctx.lineTo(w * 0.84, h * 0.48);
+  ctx.lineTo(w * 0.84, h * 0.72);
+  ctx.lineTo(w, h * 0.72);
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fill();
+  // Small star above the central spire
+  drawStarPath(ctx, w * 0.5, h * 0.015, w * 0.07);
+  ctx.restore();
+}
+
+/** Inside cover (leaf 0 back) — a "Dramatis Personae" typographic plate that
+ *  replaces the old black-and-white Bailey.png photo. Same spirit as the
+ *  reference (asymmetric collage of interests at varied scales), but recast
+ *  in Playfair, palette navy & light, with a castle silhouette in place of
+ *  the Greek bust. */
+function createCoverBackCanvasTexture() {
+  const W = 1024;
+  const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Navy ground + soft center-lit vignette so the title block carries the eye.
+  ctx.fillStyle = "#2e3c5f";
+  ctx.fillRect(0, 0, W, H);
+  const vignette = ctx.createRadialGradient(
+    W / 2,
+    H * 0.45,
+    W * 0.2,
+    W / 2,
+    H * 0.5,
+    W * 0.95
+  );
+  vignette.addColorStop(0, "rgba(60, 76, 119, 0)");
+  vignette.addColorStop(1, "rgba(15, 22, 42, 0.55)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+
+  // Double inset border to match the cover (so the two pages read as a pair).
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.55)";
+  ctx.lineWidth = 2;
+  const ox = W * 0.07;
+  const oy = H * 0.055;
+  ctx.strokeRect(ox, oy, W - ox * 2, H - oy * 2);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.35)";
+  ctx.strokeRect(W * 0.085, H * 0.07, W * 0.83, H * 0.86);
+
+  // Castle silhouette watermark (where the reference image has the statue).
+  ctx.fillStyle = "rgba(200, 204, 215, 0.14)";
+  drawCastleSilhouette(ctx, W * 0.65, H * 0.17, W * 0.27);
+
+  const fontFamily = '"Playfair Display", Georgia, "Times New Roman", serif';
+
+  // === HEADER ===
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(200, 204, 215, 0.85)";
+  ctx.font = `italic 400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", W / 2, H * 0.1);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.7)";
+  ctx.font = `italic 400 ${Math.round(W * 0.021)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "DRAMATIS PERSONAE",
+    W / 2,
+    H * 0.127,
+    W * 0.018
+  );
+
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, H * 0.147);
+  ctx.lineTo(W * 0.58, H * 0.147);
+  ctx.stroke();
+
+  // === TITLE BLOCK (upper-left) ===
+  ctx.fillStyle = "#c8ccd7";
+  ctx.textAlign = "left";
+  ctx.font = `italic 500 ${Math.round(W * 0.115)}px ${fontFamily}`;
+  ctx.fillText("Bailey", W * 0.1, H * 0.225);
+  ctx.fillText("Koo", W * 0.1, H * 0.305);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.92)";
+  ctx.font = `400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "UNIVERSITY  OF",
+    W * 0.1,
+    H * 0.36,
+    W * 0.005
+  );
+  drawTextWithLetterSpacing(
+    ctx,
+    "PENNSYLVANIA",
+    W * 0.1,
+    H * 0.38,
+    W * 0.005
+  );
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.75)";
+  ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+  ctx.fillText("Class of 2027", W * 0.1, H * 0.405);
+
+  // Editorial credits — incoming role + past internships.
+  ctx.fillStyle = "rgba(200, 204, 215, 0.92)";
+  ctx.font = `italic 400 ${Math.round(W * 0.023)}px ${fontFamily}`;
+  ctx.fillText(
+    "Incoming · Quantitative Research Developer",
+    W * 0.1,
+    H * 0.428
+  );
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.65)";
+  ctx.font = `italic 400 ${Math.round(W * 0.021)}px ${fontFamily}`;
+  ctx.fillText("previously · Palantir · Daangn", W * 0.1, H * 0.453);
+
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.3)";
+  ctx.beginPath();
+  ctx.moveTo(W * 0.1, H * 0.477);
+  ctx.lineTo(W * 0.32, H * 0.477);
+  ctx.stroke();
+
+  // === LEFT COLUMN: Practice ===
+  ctx.fillStyle = "rgba(200, 204, 215, 0.6)";
+  ctx.textAlign = "left";
+  ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "·  PRACTICE  ·",
+    W * 0.1,
+    H * 0.498,
+    W * 0.012
+  );
+
+  ctx.fillStyle = "#c8ccd7";
+  ctx.font = `italic 500 ${Math.round(W * 0.058)}px ${fontFamily}`;
+  ctx.fillText("Computer", W * 0.1, H * 0.543);
+  ctx.fillText("Science", W * 0.1, H * 0.583);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.78)";
+  ctx.font = `italic 400 ${Math.round(W * 0.024)}px ${fontFamily}`;
+  ctx.fillText("Three.js · Computer Graphics", W * 0.1, H * 0.618);
+  ctx.fillText("Full-Stack Engineering", W * 0.1, H * 0.643);
+
+  // Decorative formulas
+  ctx.fillStyle = "rgba(200, 204, 215, 0.42)";
+  ctx.font = `italic 400 ${Math.round(W * 0.023)}px ${fontFamily}`;
+  ctx.fillText("y = 2 − x³", W * 0.1, H * 0.683);
+  ctx.fillText("π(x) ~ x ⁄ ln x", W * 0.1, H * 0.71);
+
+  ctx.fillStyle = "#c8ccd7";
+  ctx.font = `italic 500 ${Math.round(W * 0.04)}px ${fontFamily}`;
+  ctx.fillText("Quantitative", W * 0.1, H * 0.753);
+  ctx.fillText("Research", W * 0.1, H * 0.788);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.7)";
+  ctx.font = `italic 400 ${Math.round(W * 0.021)}px ${fontFamily}`;
+  ctx.fillText("Trading · Strategy", W * 0.1, H * 0.813);
+
+  // === RIGHT COLUMN: Pursuits ===
+  ctx.fillStyle = "rgba(200, 204, 215, 0.6)";
+  ctx.textAlign = "right";
+  ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "·  PURSUITS  ·",
+    W * 0.9,
+    H * 0.498,
+    W * 0.012
+  );
+
+  // "Mathematics" — large italic, the right column's flourish word.
+  ctx.fillStyle = "#c8ccd7";
+  ctx.font = `italic 500 ${Math.round(W * 0.078)}px ${fontFamily}`;
+  ctx.fillText("Mathematics", W * 0.9, H * 0.555);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.78)";
+  ctx.font = `italic 400 ${Math.round(W * 0.026)}px ${fontFamily}`;
+  ctx.fillText("Analytic Number Theory", W * 0.9, H * 0.598);
+  ctx.fillText("Elliptic Curves", W * 0.9, H * 0.625);
+  ctx.fillText("Prime Number Theorem", W * 0.9, H * 0.652);
+
+  // === Pastimes (right column) ===
+  ctx.fillStyle = "rgba(200, 204, 215, 0.6)";
+  ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "·  PASTIMES  ·",
+    W * 0.9,
+    H * 0.706,
+    W * 0.012
+  );
+
+  // "Splendor" — the right column's flair word (matches reference's scale move).
+  ctx.fillStyle = "#c8ccd7";
+  ctx.font = `italic 500 ${Math.round(W * 0.09)}px ${fontFamily}`;
+  ctx.fillText("Splendor", W * 0.9, H * 0.763);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.88)";
+  ctx.font = `italic 400 ${Math.round(W * 0.042)}px ${fontFamily}`;
+  ctx.fillText("Chess", W * 0.9, H * 0.813);
+
+  // === Thesis tag — cross-disciplinary keywords spanning both columns ===
+  ctx.fillStyle = "rgba(200, 204, 215, 0.7)";
+  ctx.textAlign = "center";
+  ctx.font = `italic 400 ${Math.round(W * 0.026)}px ${fontFamily}`;
+  drawTextWithLetterSpacing(
+    ctx,
+    "THEORY  ·  ALGORITHM  ·  ML",
+    W / 2,
+    H * 0.85,
+    W * 0.014
+  );
+
+  // === FOOTER ===
+  ctx.strokeStyle = "rgba(200, 204, 215, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.42, H * 0.882);
+  ctx.lineTo(W * 0.58, H * 0.882);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.75)";
+  ctx.textAlign = "center";
+  ctx.font = `italic 400 ${Math.round(W * 0.024)}px ${fontFamily}`;
+  ctx.fillText("·  ✦  ·", W / 2, H * 0.905);
+
+  ctx.fillStyle = "rgba(200, 204, 215, 0.6)";
+  ctx.font = `italic 400 ${Math.round(W * 0.02)}px ${fontFamily}`;
+  ctx.fillText(
+    "Once upon a time, in West Philadelphia.",
+    W / 2,
+    H * 0.925
+  );
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 /** Spine pinstripe — palette navy with horizontal hairline rules and a
@@ -659,18 +942,25 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   const [dsgn1030FrontTexture, setDsgn1030FrontTexture] = useState(null);
   const [dsgn1030BackTexture, setDsgn1030BackTexture] = useState(null);
   const [coverTexture, setCoverTexture] = useState(null);
+  const [coverBackTexture, setCoverBackTexture] = useState(null);
 
-  // Generate the storybook cover once Playfair Display has loaded — keeps the
-  // title block crisp instead of rendering against the Georgia fallback.
+  // Generate the storybook cover + its "Dramatis Personae" inside page once
+  // Playfair Display has loaded. Both rely on crisp serif rendering, so we
+  // wait for `document.fonts.ready` to avoid the Georgia fallback flash.
   useEffect(() => {
     if (!isPage0Back) return;
     let cancelled = false;
     const generate = () => {
       if (cancelled) return;
-      const tex = createCoverCanvasTexture();
+      const front = createCoverCanvasTexture();
+      const back = createCoverBackCanvasTexture();
       setCoverTexture((prev) => {
         prev?.dispose?.();
-        return tex;
+        return front;
+      });
+      setCoverBackTexture((prev) => {
+        prev?.dispose?.();
+        return back;
       });
     };
     if (document.fonts && document.fonts.ready) {
@@ -681,6 +971,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     return () => {
       cancelled = true;
       setCoverTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+      setCoverBackTexture((prev) => {
         prev?.dispose?.();
         return null;
       });
@@ -924,11 +1218,12 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         aboutMeBackTexture || picture2;
     } else if (isPage0Back) {
       // Page 0: front shows custom storybook cover canvas (or book-cover.jpg
-      // until Playfair has loaded and our cover is composited), back is Bailey.png
+      // until Playfair has loaded), back shows the "Dramatis Personae" plate
+      // (or Bailey.png until our canvas is composited).
       skinnedMeshRef.current.material[4].color = whiteColor;
       skinnedMeshRef.current.material[4].map = coverTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
-      skinnedMeshRef.current.material[5].map = picture2;
+      skinnedMeshRef.current.material[5].map = coverBackTexture || picture2;
     } else if (isDsgn1030Page) {
       skinnedMeshRef.current.material[4].color = whiteColor;
       skinnedMeshRef.current.material[4].map =
