@@ -14,7 +14,6 @@ const pictures = [
   "DSC02069",
 ];
 
-export const pageAtom = atom(0);
 export const showAboutMeAtom = atom(false);
 
 /**
@@ -55,6 +54,9 @@ export const pageNames = [
 
 /** Sidebar index for "Final Proj." — used by Canvas scene and book logic. */
 export const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Proj.");
+
+/** Default chapter on first load: Final Proj. */
+export const pageAtom = atom(FINAL_PROJ_PAGE_INDEX);
 
 /** Soft twinkling night-sky field that sits behind the 3D scene.
  *  Subtle cursor parallax adds depth — the stars drift opposite to the cursor
@@ -396,14 +398,29 @@ function NavPill({ active, onClick, label, compact = false }) {
           : "text-[#c8ccd7]/75 hover:text-[#c8ccd7] hover:bg-[#c8ccd7]/10"
       }`}
     >
-      <span
-        aria-hidden
-        className={`inline-block w-1 h-1 rounded-full transition-all duration-200 ${
-          active
-            ? "bg-[#2e3c5f]"
-            : "bg-[#c8ccd7]/40 group-hover:bg-[#c8ccd7]/80"
-        }`}
-      />
+      {active ? (
+        <span
+          aria-hidden
+          className="inline-flex items-center justify-center w-2.5 h-2.5 text-[#2e3c5f]"
+        >
+          <svg
+            viewBox="0 0 100 100"
+            width="100%"
+            height="100%"
+            className="animate-spin-slow"
+          >
+            <path
+              d="M50 4 L54 46 L96 50 L54 54 L50 96 L46 54 L4 50 L46 46 Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="inline-block w-1 h-1 rounded-full bg-[#c8ccd7]/40 group-hover:bg-[#c8ccd7]/80 transition-all duration-200"
+        />
+      )}
       <span>{label}</span>
     </button>
   );

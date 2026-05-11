@@ -287,6 +287,25 @@
   text-transform: uppercase;
   margin-bottom: 20px;
   color: var(--fg);
+  position: relative;
+}
+
+/* Storybook ornament above every section title — a thin Playfair-italic
+   "·  ✦  ·" flourish. Tiny on its own, but, repeated across the page, it
+   reads as the publication's signature ornament. */
+.about-me-page .section-title::before {
+  content: "·  ✦  ·";
+  display: block;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.6em;
+  letter-spacing: 0.45em;
+  color: var(--muted);
+  margin-bottom: 0.55em;
+  opacity: 0.85;
+  text-transform: none;
+  padding-left: 0.45em; /* counter the trailing letter-spacing for optical centering */
 }
 
 /* Experiences Timeline Style */

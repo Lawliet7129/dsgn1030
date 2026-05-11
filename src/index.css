@@ -124,6 +124,20 @@ body {
   color: var(--pal-navy-900);
 }
 
+/* Slow, ornamental rotation used by the active nav pill star indicator. */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 9s linear infinite;
+  transform-origin: center;
+}
+
 /* Soft, slow twinkle for the star field */
 @keyframes twinkle {
   0%,
