@@ -1,4 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import { useAtom } from "jotai";
+import { FINAL_PROJ_PAGE_INDEX, pageAtom } from "./UI";
 import "./CursorTrail.css";
 
 /**
@@ -7,6 +10,10 @@ import "./CursorTrail.css";
  * Spawns small glowing stardust particles + occasional ✦/✧ sparkles at the
  * cursor's position, which drift down and fade out — designed to match the
  * Disney-castle / twilight-storybook aesthetic of the rest of the site.
+ *
+ * Only active when the user is in a "magical" context:
+ *   • Final Project page (castle reveal), OR
+ *   • /about route (long-form chapter page)
  *
  * Performance notes:
  *   • Mousemove is throttled to ~45 spawns/sec.
@@ -17,8 +24,15 @@ import "./CursorTrail.css";
  */
 export function CursorTrail() {
   const containerRef = useRef(null);
+  const location = useLocation();
+  const [page] = useAtom(pageAtom);
+
+  const isAboutRoute = location.pathname === "/about";
+  const isFinalProjActive = page === FINAL_PROJ_PAGE_INDEX;
+  const enabled = isAboutRoute || isFinalProjActive;
 
   useEffect(() => {
+    if (!enabled) return;
     if (typeof window === "undefined") return;
 
     const reduceMotion = window.matchMedia(
@@ -119,16 +133,21 @@ export function CursorTrail() {
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("click", onClick);
-      // Clear any remaining particles when component unmounts.
+      // Clear any remaining particles when the trail is deactivated so the
+      // dust doesn't linger after leaving the magical context.
       if (container) container.innerHTML = "";
     };
-  }, []);
+  }, [enabled]);
 
+  // We always mount the container so the ref is stable; the effect above is
+  // what gates whether listeners are actually attached. When disabled the
+  // container is just an empty fixed div (pointer-events: none).
   return (
     <div
       className="cursor-trail"
       ref={containerRef}
       aria-hidden="true"
+      data-active={enabled ? "true" : "false"}
     />
   );
 }

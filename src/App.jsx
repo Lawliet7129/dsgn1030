@@ -16,9 +16,9 @@ import { CursorTrail } from "./components/CursorTrail";
 /** Vertical offset for the whole 3D scene (book + castle + ground). */
 const SCENE_POSITION_Y = -0.4;
 /** Scene scale when "Final Proj." is the active page. */
-const FINAL_PROJ_SCENE_SCALE = 0.6;
+const FINAL_PROJ_SCENE_SCALE = 0.75;
 /** Scene tilt on X when "Final Proj." is the active page (radians). */
-const FINAL_PROJ_SCENE_ROTATION_X = -Math.PI / 3;
+const FINAL_PROJ_SCENE_ROTATION_X = -Math.PI / 4.5;
 
 function SceneCanvas() {
   const [page] = useAtom(pageAtom);
