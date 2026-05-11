@@ -170,7 +170,7 @@ function createPj1TopThirdCanvasTextureFromImage(
   canvas.width = canvasW;
   canvas.height = canvasH;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#f6f6f4";
+  ctx.fillStyle = "#c8ccd7";
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   const iw = img.naturalWidth || img.width;
@@ -187,15 +187,16 @@ function createPj1TopThirdCanvasTextureFromImage(
 
   if (captionLines?.length) {
     const pad = Math.round(canvasH * 0.042);
-    let fontSize = Math.round(canvasW * 0.062);
+    let fontSize = Math.round(canvasW * 0.07);
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillStyle = "#2a2a2a";
+    ctx.fillStyle = "#2e3c5f";
     const maxW = canvasW * 0.9;
-    const fontFamily = "system-ui, -apple-system, sans-serif";
+    // Storybook serif italic to match the fairytale tone
+    const fontFamily = '"Playfair Display", Georgia, "Times New Roman", serif';
 
     const fitsAtSize = (size) => {
-      ctx.font = `600 ${size}px ${fontFamily}`;
+      ctx.font = `italic 500 ${size}px ${fontFamily}`;
       return captionLines.every(
         (line) => ctx.measureText(line).width <= maxW
       );
@@ -203,7 +204,7 @@ function createPj1TopThirdCanvasTextureFromImage(
     while (fontSize > 14 && !fitsAtSize(fontSize)) {
       fontSize -= 1;
     }
-    ctx.font = `600 ${fontSize}px ${fontFamily}`;
+    ctx.font = `italic 500 ${fontSize}px ${fontFamily}`;
     const lineHeight = Math.round(fontSize * 1.12);
     let textY = dy + dh + pad;
     for (const line of captionLines) {
@@ -276,9 +277,12 @@ pageGeometry.setAttribute(
 );
 
 const whiteColor = new Color("white");
-const emissiveColor = new Color("blueviolet");
-/** Leaves after Exercise 1 (index > 2): solid #ffffff, no photo textures */
-const BLANK_LEAF_COLOR = new Color("#ffffff");
+/** Subtle navy highlight glow when hovering pages (palette: #3c4c77). */
+const emissiveColor = new Color("#3c4c77");
+/** Storybook ivory tint for page paper; multiplies subtly with photo textures. */
+const PAGE_PAPER_TINT = new Color("#e6e9f0");
+/** Blank leaves after Exercise 1: gentle palette ivory (kept cohesive with paper). */
+const BLANK_LEAF_COLOR = new Color("#dde1ea");
 const BLANK_LEAF_TEXTURE_PATH = "/textures/blank-white.png";
 
 const pageMaterials = [
@@ -286,7 +290,7 @@ const pageMaterials = [
     color: whiteColor,
   }),
   new MeshStandardMaterial({
-    color: "#111",
+    color: "#2e3c5f",
   }),
   new MeshStandardMaterial({
     color: whiteColor,
@@ -355,8 +359,8 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       canvas.height = 1024;
       const ctx = canvas.getContext('2d');
       
-      // Fill with background color (#f6f6f4)
-      ctx.fillStyle = '#f6f6f4';
+      // Fill with palette light cool gray
+      ctx.fillStyle = '#c8ccd7';
       ctx.fillRect(0, 0, 1024, 1024);
       
       // Wait for image to load
@@ -368,7 +372,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       
       function createCircularCrop() {
         // Clear and redraw background
-        ctx.fillStyle = '#f6f6f4';
+        ctx.fillStyle = '#c8ccd7';
         ctx.fillRect(0, 0, 1024, 1024);
         
         // Calculate circle size and position (centered)
@@ -573,10 +577,10 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       skinnedMeshRef.current.material[5].color = BLANK_LEAF_COLOR;
       skinnedMeshRef.current.material[5].map = null;
     } else {
-      // Other pages: normal textures
-      skinnedMeshRef.current.material[4].color = whiteColor;
+      // Generic photo pages — apply gentle ivory wash so stray photos stay in palette
+      skinnedMeshRef.current.material[4].color = PAGE_PAPER_TINT;
       skinnedMeshRef.current.material[4].map = picture;
-      skinnedMeshRef.current.material[5].color = whiteColor;
+      skinnedMeshRef.current.material[5].color = PAGE_PAPER_TINT;
       skinnedMeshRef.current.material[5].map = picture2;
     }
 

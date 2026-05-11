@@ -1,9 +1,9 @@
 /* 1) Font + base variables */
 .about-me-page {
-  --bg: #f6f6f4;
-  --fg: #111;
-  --muted: rgba(17, 17, 17, 0.55);
-  --line: rgba(17, 17, 17, 0.35);
+  --bg: #c8ccd7;
+  --fg: #2e3c5f;
+  --muted: rgba(46, 60, 95, 0.55);
+  --line: rgba(46, 60, 95, 0.3);
 
   --gap: 16px;
   --container-pad: 20px;
@@ -14,10 +14,10 @@
 }
 
 [data-theme="dark"] .about-me-page {
-  --bg: #0b0b0b;
-  --fg: #f2f2f2;
-  --muted: rgba(242, 242, 242, 0.55);
-  --line: rgba(242, 242, 242, 0.35);
+  --bg: #2e3c5f;
+  --fg: #c8ccd7;
+  --muted: rgba(200, 204, 215, 0.55);
+  --line: rgba(200, 204, 215, 0.3);
 }
 
 .about-me-page {

@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
 
 /* Neue Montreal Font - Pangram Pangram Foundry */
 /* Add your Neue Montreal font files to public/fonts/ directory */
@@ -40,10 +41,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Site palette — minimal cool blue-grays */
+:root {
+  --pal-navy-900: #2e3c5f;
+  --pal-navy-800: #3c4c77;
+  --pal-slate-700: #565360;
+  --pal-slate-600: #5f6a82;
+  --pal-slate-500: #7b879d;
+  --pal-slate-400: #949fb6;
+  --pal-warm-500: #948f93;
+  --pal-warm-400: #a3a2a6;
+  --pal-light: #c8ccd7;
+}
+
 #root {
   width: 100vw;
   height: 100vh;
-  background: radial-gradient( #2a2a2a, #ffffff 60%);
+  /* Twilight sky: navy dusk top → dusty horizon glow at bottom-center (where the castle sits) */
+  background:
+    radial-gradient(
+      ellipse 80% 55% at 50% 100%,
+      rgba(200, 204, 215, 0.55) 0%,
+      rgba(123, 135, 157, 0.35) 25%,
+      rgba(60, 76, 119, 0) 65%
+    ),
+    linear-gradient(
+      180deg,
+      #232f4d 0%,
+      #2e3c5f 28%,
+      #3c4c77 55%,
+      #5f6a82 80%,
+      #7b879d 100%
+    );
 }
 
 body {
@@ -51,16 +80,18 @@ body {
 }
 
 .outline-text {
-  -webkit-text-stroke: 1px white;
+  -webkit-text-stroke: 1px var(--pal-light);
 }
 
-.spadeace-pattern {
-  background-image: url('/images/spadeace.png');
-  background-repeat: repeat;
-  background-size: 80px 120px;
-  opacity: 0.4;
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+/* Soft, slow twinkle for the star field */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: var(--twinkle-min, 0.2);
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: var(--twinkle-max, 0.9);
+    transform: scale(1.05);
+  }
 }
