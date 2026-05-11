@@ -1,7 +1,6 @@
-import { Loader } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Suspense, useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useAtom } from "jotai";
 import { Experience } from "./components/Experience";
 import {
@@ -12,6 +11,13 @@ import {
 } from "./components/UI";
 import { AboutMe } from "./components/AboutMe";
 import { CursorTrail } from "./components/CursorTrail";
+import { LoadingScreen } from "./components/LoadingScreen";
+import { AboutAccessModal } from "./components/AboutAccessModal";
+import {
+  isAboutUnlocked,
+  markAboutUnlocked,
+  verifyAboutPassword,
+} from "./components/aboutAccess";
 
 /** Vertical offset for the whole 3D scene (book + castle + ground). */
 const SCENE_POSITION_Y = -0.4;
@@ -65,7 +71,7 @@ function HomePage() {
     <>
       <UI />
       <AboutMe />
-      <Loader />
+      <LoadingScreen />
       <SceneCanvas />
     </>
   );
@@ -74,16 +80,55 @@ function HomePage() {
 function AboutMePage() {
   // Set showAboutMe to true when on /about route
   const [, setShowAboutMe] = useAtom(showAboutMeAtom);
+  const navigate = useNavigate();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [showGate, setShowGate] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
+    if (isAboutUnlocked()) {
+      setIsAuthorized(true);
+      return;
+    }
+    setShowGate(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
     setShowAboutMe(true);
     return () => setShowAboutMe(false);
-  }, [setShowAboutMe]);
-  
+  }, [isAuthorized, setShowAboutMe]);
+
   return (
     <>
+      <AboutAccessModal
+        open={showGate}
+        title="About Me"
+        subtitle="Enter password to access this private chapter."
+        errorMessage={errorMessage}
+        submitting={isSubmitting}
+        onSubmit={async (password) => {
+          setIsSubmitting(true);
+          const ok = await verifyAboutPassword(password);
+          setIsSubmitting(false);
+          if (ok) {
+            markAboutUnlocked();
+            setIsAuthorized(true);
+            setShowGate(false);
+            setErrorMessage("");
+            return;
+          }
+          setErrorMessage("Incorrect password. Try again.");
+        }}
+        onCancel={() => {
+          if (isSubmitting) return;
+          navigate("/", { replace: true });
+        }}
+      />
       <UI />
-      <AboutMe />
-      <Loader />
+      {isAuthorized ? <AboutMe /> : null}
+      <LoadingScreen />
       <SceneCanvas />
     </>
   );

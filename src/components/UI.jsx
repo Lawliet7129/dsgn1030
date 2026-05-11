@@ -1,6 +1,8 @@
 import { atom, useAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AboutAccessModal } from "./AboutAccessModal";
+import { isAboutUnlocked, markAboutUnlocked, verifyAboutPassword } from "./aboutAccess";
 
 const pictures = [
   "DSC00680",
@@ -438,46 +440,88 @@ function NavPill({ active, onClick, label, compact = false }) {
  *  - Mobile: inlined after the About Me pill in the horizontal strip. */
 function OpenAboutButton({ visible, compact = false, className = "" }) {
   const navigate = useNavigate();
+  const [showGate, setShowGate] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleOpenAbout = () => {
+    if (isAboutUnlocked()) {
+      navigate("/about");
+      return;
+    }
+    setErrorMessage("");
+    setShowGate(true);
+  };
+
+  const handleSubmitPassword = async (password) => {
+    setIsSubmitting(true);
+    const ok = await verifyAboutPassword(password);
+    setIsSubmitting(false);
+    if (ok) {
+      markAboutUnlocked();
+      setShowGate(false);
+      setErrorMessage("");
+      navigate("/about");
+      return;
+    }
+    setErrorMessage("Incorrect password. Try again.");
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => navigate("/about")}
-      aria-label="Open the full About Me chapter"
-      title="Read this chapter in full"
-      className={`${className} group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c8ccd7]/40 bg-[#2e3c5f]/35 text-[#c8ccd7] backdrop-blur-md shadow-[0_4px_14px_rgba(46,60,95,0.25)] transition-all duration-300 ease-out hover:bg-[#c8ccd7]/15 hover:border-[#c8ccd7]/70 hover:text-white hover:shadow-[0_6px_22px_rgba(200,204,215,0.35)] ${
-        compact ? "px-2 py-1" : "px-3 py-1.5"
-      } ${
-        visible
-          ? "opacity-100 translate-x-0 pointer-events-auto"
-          : "opacity-0 -translate-x-2 pointer-events-none"
-      }`}
-    >
-      <span
-        aria-hidden
-        className="font-['Playfair_Display'] italic text-[13px] leading-none text-[#c8ccd7]/85 group-hover:text-white transition-colors"
+    <>
+      <button
+        type="button"
+        onClick={handleOpenAbout}
+        aria-label="Open the full About Me chapter"
+        title="Read this chapter in full"
+        className={`${className} group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c8ccd7]/40 bg-[#2e3c5f]/35 text-[#c8ccd7] backdrop-blur-md shadow-[0_4px_14px_rgba(46,60,95,0.25)] transition-all duration-300 ease-out hover:bg-[#c8ccd7]/15 hover:border-[#c8ccd7]/70 hover:text-white hover:shadow-[0_6px_22px_rgba(200,204,215,0.35)] ${
+          compact ? "px-2 py-1" : "px-3 py-1.5"
+        } ${
+          visible
+            ? "opacity-100 translate-x-0 pointer-events-auto"
+            : "opacity-0 -translate-x-2 pointer-events-none"
+        }`}
       >
-        ✦
-      </span>
-      <span className="font-['Playfair_Display'] italic text-[12.5px] leading-none tracking-wide normal-case">
-        read in full
-      </span>
-      <svg
-        viewBox="0 0 24 24"
-        width="11"
-        height="11"
-        aria-hidden
-        className="text-[#c8ccd7]/75 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-white"
-      >
-        <path
-          d="M5 12h14M13 6l6 6-6 6"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-      </svg>
-    </button>
+        <span
+          aria-hidden
+          className="font-['Playfair_Display'] italic text-[13px] leading-none text-[#c8ccd7]/85 group-hover:text-white transition-colors"
+        >
+          ✦
+        </span>
+        <span className="font-['Playfair_Display'] italic text-[12.5px] leading-none tracking-wide normal-case">
+          read in full
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          width="11"
+          height="11"
+          aria-hidden
+          className="text-[#c8ccd7]/75 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-white"
+        >
+          <path
+            d="M5 12h14M13 6l6 6-6 6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </svg>
+      </button>
+      <AboutAccessModal
+        open={showGate}
+        title="Read in Full"
+        subtitle="This chapter is sealed. Enter the password."
+        errorMessage={errorMessage}
+        submitting={isSubmitting}
+        onSubmit={handleSubmitPassword}
+        onCancel={() => {
+          if (isSubmitting) return;
+          setShowGate(false);
+          setErrorMessage("");
+        }}
+      />
+    </>
   );
 }
 

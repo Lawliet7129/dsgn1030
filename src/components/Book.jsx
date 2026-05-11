@@ -1572,7 +1572,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     : isBlankLeafAfterExercise1
     ? [BLANK_LEAF_TEXTURE_PATH, BLANK_LEAF_TEXTURE_PATH]
     : [`/textures/${front}.jpg`, `/textures/${back}.jpg`];
-
+  
   const textures = useTexture(texturePaths);
   const picture = textures[0];
   const picture2 = textures[1];
@@ -1920,18 +1920,18 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       ctx.arc(centerX, centerY, circleRadius + 5, 0, Math.PI * 2);
       ctx.stroke();
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
-      ctx.clip();
-
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+        ctx.clip();
+        
       const imgAspect = (img.naturalWidth || img.width) / (img.naturalHeight || img.height);
       let dw;
       let dh;
-      if (imgAspect > 1) {
+        if (imgAspect > 1) {
         dh = circleRadius * 2;
         dw = dh * imgAspect;
-      } else {
+        } else {
         dw = circleRadius * 2;
         dh = dw / imgAspect;
       }
@@ -1945,8 +1945,8 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       ctx.fillStyle = "rgba(46, 60, 95, 0.2)";
       ctx.fillRect(dx, dy, dw, dh);
       ctx.globalCompositeOperation = "source-over";
-      ctx.restore();
-
+        ctx.restore();
+        
       // Four cardinal sparkles around the ring.
       ctx.fillStyle = "rgba(46, 60, 95, 0.55)";
       const starR = 18;
@@ -1987,8 +1987,8 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       ctx.font = `italic 400 ${Math.round(W * 0.022)}px ${fontFamily}`;
       ctx.fillText("in which I am introduced.", W / 2, H * 0.91);
 
-      const texture = new CanvasTexture(canvas);
-      texture.colorSpace = SRGBColorSpace;
+        const texture = new CanvasTexture(canvas);
+        texture.colorSpace = SRGBColorSpace;
       texture.needsUpdate = true;
       setCircularTexture((prev) => {
         prev?.dispose?.();
@@ -2213,7 +2213,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       }
     }
   }, [opened, isDsgn1030Page, videoBackTexture]);
-
+  
   if (picture && picture2) {
     picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
   }
@@ -2241,7 +2241,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       }
     }
     const skeleton = new Skeleton(bones);
-
+    
     const materials = [
       ...pageMaterials,
       new MeshStandardMaterial({
@@ -2540,16 +2540,16 @@ export const Book = ({ ...props }) => {
     <group {...props}>
       <group position-y={isFinalProjPage ? -1 : 0}>
         <group rotation-y={-Math.PI / 2}>
-          {[...pages].map((pageData, index) => (
-            <Page
-              key={index}
-              page={delayedPage}
-              number={index}
-              opened={delayedPage > index}
-              bookClosed={delayedPage === 0 || delayedPage === pages.length}
-              {...pageData}
-            />
-          ))}
+      {[...pages].map((pageData, index) => (
+        <Page
+          key={index}
+          page={delayedPage}
+          number={index}
+          opened={delayedPage > index}
+          bookClosed={delayedPage === 0 || delayedPage === pages.length}
+          {...pageData}
+        />
+      ))}
         </group>
         {showCastle && (
           <Suspense fallback={null}>
