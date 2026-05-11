@@ -624,22 +624,22 @@ export const UI = () => {
               Once upon a time
             </h2>
             <h2 className="shrink-0 text-transparent text-12xl font-semibold italic outline-text">
-              Whimsy
+              
             </h2>
             <h1 className="shrink-0 text-[#c8ccd7] text-12xl font-bold">
               Bailey Koo
             </h1>
             <h2 className="shrink-0 text-[#c8ccd7] text-9xl italic font-extralight">
-              storyteller
+              Quantitative
             </h2>
             <h2 className="shrink-0 text-[#c8ccd7] text-9xl font-medium">
-              Reverie
+              Research
             </h2>
             <h2 className="shrink-0 text-transparent text-13xl font-bold outline-text italic">
-              Folklore
+              Developer
             </h2>
             <h2 className="shrink-0 text-[#c8ccd7] text-13xl italic font-light">
-              a quiet tale
+              DSGN 1030
             </h2>
           </div>
           <div className="absolute top-0 left-0 animate-horizontal-scroll-2 flex items-center gap-10 px-8 w-max">
@@ -647,22 +647,22 @@ export const UI = () => {
               Chapter one
             </h2>
             <h2 className="shrink-0 text-transparent text-12xl font-bold italic outline-text">
-              Daydreamer
+              Math
             </h2>
             <h1 className="shrink-0 text-[#c8ccd7] text-12xl font-bold">
               Bailey Koo
             </h1>
             <h2 className="shrink-0 text-[#c8ccd7] text-9xl font-medium">
-              Lullaby
+              Computer Science
             </h2>
             <h2 className="shrink-0 text-[#c8ccd7] text-9xl italic font-extralight">
-              castles in the sky
+              Computer Graphics
             </h2>
             <h2 className="shrink-0 text-transparent text-13xl font-semibold outline-text italic">
               2027
             </h2>
             <h2 className="shrink-0 text-[#c8ccd7] text-13xl italic font-light">
-              builder of worlds
+              Three.js
             </h2>
           </div>
         </div>
