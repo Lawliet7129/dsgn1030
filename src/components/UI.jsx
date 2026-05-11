@@ -45,15 +45,15 @@ pages.push({
 export const pageNames = [
   "Cover",
   "About Me",
-  "Exercise 1",
-  "Incomplete.",
-  "Inconsistency.",
-  "Final Proj.",
+  "In-class Exercise",
+  "Project 1",
+  "Project 2",
+  "Final Project",
   "Back Cover",
 ];
 
-/** Sidebar index for "Final Proj." — used by Canvas scene and book logic. */
-export const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Proj.");
+/** Sidebar index for "Final Project" — used by Canvas scene and book logic. */
+export const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Project");
 
 /** Default chapter on first load: Final Proj. */
 export const pageAtom = atom(FINAL_PROJ_PAGE_INDEX);
