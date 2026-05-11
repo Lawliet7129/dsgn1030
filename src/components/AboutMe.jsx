@@ -88,7 +88,7 @@ export const AboutMe = () => {
           <nav className="col-start-4 col-end-7">
             <a href="#" className="active">About</a>
             <span className="bracket">(</span>
-            <a href="#">Projects</a>
+            <a href="#">Exercise 1</a>
             <span className="bracket">)</span>
           </nav>
           <a href="mailto:baileykoo0305@gmail.com" className="email col-start-14 col-end-16">

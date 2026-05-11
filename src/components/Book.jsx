@@ -33,6 +33,128 @@ const PAGE_DEPTH = 0.003;
 const PAGE_SEGMENTS = 30;
 const SEGMENT_WIDTH = PAGE_WIDTH / PAGE_SEGMENTS;
 
+/** Top inset for pj1-1 (About Me back) only — changing this does not affect pj1-2. */
+const PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO = 0.15;
+/** Top inset for pj1-2 (Exercise 1 / leaf 2 front) only — set equal to the About Me value when you want them to match. */
+const PJ1_DSGN_1030_FRONT_TOP_MARGIN_RATIO = 0.53;
+
+/** Portrait circle on About Me uses radius 350 on a 1024-wide canvas; pj1-3 overlay uses this × scale. */
+const ABOUT_ME_PORTRAIT_CIRCLE_RADIUS = 350;
+const PJ13_OVERLAY_RADIUS_SCALE = 0.75;
+
+/** Circular crop + cover-fit (same math as About Me selfportrait). */
+function drawImageCircularCover(ctx, img, centerX, centerY, circleRadius) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+  ctx.clip();
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const imgAspect = iw / ih;
+  let drawWidth;
+  let drawHeight;
+  let drawX;
+  let drawY;
+  if (imgAspect > 1) {
+    drawHeight = circleRadius * 2;
+    drawWidth = drawHeight * imgAspect;
+    drawX = centerX - drawWidth / 2;
+    drawY = centerY - drawHeight / 2;
+  } else {
+    drawWidth = circleRadius * 2;
+    drawHeight = drawWidth / imgAspect;
+    drawX = centerX - drawWidth / 2;
+    drawY = centerY - drawHeight / 2;
+  }
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
+}
+
+/** Shared scale/placement for PJ1 compositing; margin is controlled per-page via `topMarginRatio`.
+ *  Optional `captionLines`: centered under the image, one line each (About Me back only).
+ *  Optional `circularOverlayImg`: pj1-3 on Exercise 1 front — drawn on top, circular, slightly right. */
+function createPj1TopThirdCanvasTextureFromImage(
+  img,
+  topMarginRatio,
+  captionLines,
+  circularOverlayImg
+) {
+  if (!img?.complete || !img.width) return null;
+  const canvasW = 1024;
+  const canvasH = Math.round((canvasW * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f6f6f4";
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  const regionH = canvasH / 3;
+  const fitScale = Math.min(canvasW / iw, regionH / ih);
+  const scale = fitScale * 1.5;
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = (canvasW - dw) / 2;
+  const topMargin = Math.round(canvasH * topMarginRatio);
+  const dy = (regionH - dh) / 2 + topMargin;
+  ctx.drawImage(img, dx, dy, dw, dh);
+
+  if (captionLines?.length) {
+    const pad = Math.round(canvasH * 0.042);
+    let fontSize = Math.round(canvasW * 0.062);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = "#2a2a2a";
+    const maxW = canvasW * 0.9;
+    const fontFamily = "system-ui, -apple-system, sans-serif";
+
+    const fitsAtSize = (size) => {
+      ctx.font = `600 ${size}px ${fontFamily}`;
+      return captionLines.every(
+        (line) => ctx.measureText(line).width <= maxW
+      );
+    };
+    while (fontSize > 14 && !fitsAtSize(fontSize)) {
+      fontSize -= 1;
+    }
+    ctx.font = `600 ${fontSize}px ${fontFamily}`;
+    const lineHeight = Math.round(fontSize * 1.12);
+    let textY = dy + dh + pad;
+    for (const line of captionLines) {
+      ctx.fillText(line, canvasW / 2, textY);
+      textY += lineHeight;
+    }
+  }
+
+  if (
+    circularOverlayImg &&
+    circularOverlayImg.complete &&
+    (circularOverlayImg.naturalWidth || circularOverlayImg.width)
+  ) {
+    const refCanvasW = 1024;
+    const circleRadius =
+      ABOUT_ME_PORTRAIT_CIRCLE_RADIUS *
+      PJ13_OVERLAY_RADIUS_SCALE *
+      (canvasW / refCanvasW);
+    const centerX = canvasW * 0.7;
+    const centerY = canvasH * 0.27;
+    drawImageCircularCover(
+      ctx,
+      circularOverlayImg,
+      centerX,
+      centerY,
+      circleRadius
+    );
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 const pageGeometry = new BoxGeometry(
   PAGE_WIDTH,
   PAGE_HEIGHT,
@@ -88,39 +210,50 @@ const pageMaterials = [
 ];
 
 pages.forEach((page, index) => {
-  // Skip preloading textures for pages with solid colors
-  // Page 0 back uses Bailey.png, page 1 front uses selfportrait.jpg
+  // Page 0 back Bailey.png; page 1 selfportrait + pj1-2 back; page 2 pj1-2 + back + pj1-3 overlay
   if (index === 0) {
-    // Cover page: preload front (cover) and Bailey.png for back
     useTexture.preload(`/textures/${page.front}.jpg`);
     useTexture.preload(`/textures/Bailey.png`);
   } else if (index === 1) {
-    // About Me page: preload selfportrait.jpg for front, and back texture
     useTexture.preload(`/textures/selfportrait.jpg`);
+    useTexture.preload(`/textures/pj1-2.png`);
+  } else if (index === 2) {
+    useTexture.preload(`/textures/pj1-1.png`);
     useTexture.preload(`/textures/${page.back}.jpg`);
+    useTexture.preload(`/textures/pj1-3.png`);
   } else {
-    // Other pages: preload both
     useTexture.preload(`/textures/${page.front}.jpg`);
     useTexture.preload(`/textures/${page.back}.jpg`);
   }
 });
 
 const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
-  // About Me page is page 1 - front uses selfportrait.jpg (circular crop), back uses solid color
+  // About Me page is page 1 - front uses selfportrait.jpg (circular crop), back uses pj1-1.png
   const isAboutMePage = number === 1;
   // Page 0's back uses Bailey.png
   const isPage0Back = number === 0;
-  
-  // For page 0, use Bailey.png for back instead of the normal back texture
-  // For page 1 (About Me), load selfportrait.jpg for front (will be processed into circular crop)
+  // Leaf 2 (Exercise 1): front pj1-2 base + pj1-3 circular overlay; back is photo jpg
+  const isDsgn1030Page = number === 2;
+
   const texturePaths = isPage0Back
     ? [`/textures/${front}.jpg`, "/textures/Bailey.png"]
     : isAboutMePage
-    ? ["/textures/selfportrait.jpg", `/textures/${back}.jpg`]
+    ? ["/textures/selfportrait.jpg", "/textures/pj1-1.png"]
+    : isDsgn1030Page
+    ? [
+        "/textures/pj1-2.png",
+        `/textures/${back}.jpg`,
+        "/textures/pj1-3.png",
+      ]
     : [`/textures/${front}.jpg`, `/textures/${back}.jpg`];
-  
-  const [picture, picture2] = useTexture(texturePaths);
+
+  const textures = useTexture(texturePaths);
+  const picture = textures[0];
+  const picture2 = textures[1];
+  const picture3 = textures[2];
   const [circularTexture, setCircularTexture] = useState(null);
+  const [aboutMeBackTexture, setAboutMeBackTexture] = useState(null);
+  const [dsgn1030FrontTexture, setDsgn1030FrontTexture] = useState(null);
   
   // Create circular cropped texture for page 1's front
   useEffect(() => {
@@ -187,9 +320,83 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
       }
     }
   }, [isAboutMePage, picture]);
-  
+
+  // About Me back: pj1-1 (margin: PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO only)
+  useEffect(() => {
+    if (!isAboutMePage || !picture2) return;
+
+    function composeAboutMeBack() {
+      const texture = createPj1TopThirdCanvasTextureFromImage(
+        picture2.image,
+        PJ1_ABOUT_ME_BACK_TOP_MARGIN_RATIO,
+        ["In-Class Exercise:", "Basic Table Scene"]
+      );
+      if (!texture) return;
+      setAboutMeBackTexture((prev) => {
+        prev?.dispose?.();
+        return texture;
+      });
+    }
+
+    if (picture2.image?.complete) {
+      composeAboutMeBack();
+    } else if (picture2.image) {
+      picture2.image.onload = composeAboutMeBack;
+    }
+
+    return () => {
+      if (picture2.image) picture2.image.onload = null;
+      setAboutMeBackTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isAboutMePage, picture2]);
+
+  // Exercise 1 front: pj1-2 composited + pj1-3 circular overlay on top
+  useEffect(() => {
+    if (!isDsgn1030Page || !picture || !picture3) return;
+
+    function composeDsgnFront() {
+      const base = picture.image;
+      const overlay = picture3.image;
+      if (!base?.complete || !base.width) return;
+      if (!overlay?.complete || !(overlay.naturalWidth || overlay.width))
+        return;
+
+      const texture = createPj1TopThirdCanvasTextureFromImage(
+        base,
+        PJ1_DSGN_1030_FRONT_TOP_MARGIN_RATIO,
+        undefined,
+        overlay
+      );
+      if (!texture) return;
+      setDsgn1030FrontTexture((prev) => {
+        prev?.dispose?.();
+        return texture;
+      });
+    }
+
+    composeDsgnFront();
+    const run = () => composeDsgnFront();
+    if (picture.image) picture.image.onload = run;
+    if (picture3.image) picture3.image.onload = run;
+
+    return () => {
+      if (picture.image) picture.image.onload = null;
+      if (picture3.image) picture3.image.onload = null;
+      setDsgn1030FrontTexture((prev) => {
+        prev?.dispose?.();
+        return null;
+      });
+    };
+  }, [isDsgn1030Page, picture, picture3]);
+
   if (picture && picture2) {
     picture.colorSpace = picture2.colorSpace = SRGBColorSpace;
+  }
+  if (picture3) {
+    picture3.colorSpace = SRGBColorSpace;
   }
   const group = useRef();
   const turnedAt = useRef(0);
@@ -213,9 +420,6 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     }
     const skeleton = new Skeleton(bones);
 
-    // About Me page background color (#f6f6f4)
-    const aboutMeColor = new Color("#f6f6f4");
-    
     const materials = [
       ...pageMaterials,
       new MeshStandardMaterial({
@@ -227,9 +431,9 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         emissiveIntensity: 0,
       }),
       new MeshStandardMaterial({
-        // Page 0 back uses Bailey.png, page 1 back uses solid color
-        color: isAboutMePage ? aboutMeColor : whiteColor,
-        map: isAboutMePage ? null : picture2, // Will be set in useFrame
+        // Page 0 back uses Bailey.png; page 1 back uses pj1-1.png; others use picture2
+        color: whiteColor,
+        map: picture2,
         roughness: 0.1,
         emissive: emissiveColor,
         emissiveIntensity: 0,
@@ -252,17 +456,23 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     }
 
     // Update materials for About Me page and page 0's back
-    const aboutMeColor = new Color("#f6f6f4");
     if (isAboutMePage) {
-      // Page 1 (About Me): front uses circular cropped selfportrait.jpg, back uses solid color
+      // Page 1 (About Me): front uses circular cropped selfportrait.jpg, back uses composited pj1-1.png
       skinnedMeshRef.current.material[4].color = whiteColor;
       skinnedMeshRef.current.material[4].map = circularTexture || picture; // Use circular texture if available
-      skinnedMeshRef.current.material[5].color = aboutMeColor;
-      skinnedMeshRef.current.material[5].map = null;
+      skinnedMeshRef.current.material[5].color = whiteColor;
+      skinnedMeshRef.current.material[5].map =
+        aboutMeBackTexture || picture2;
     } else if (isPage0Back) {
       // Page 0: front shows cover, back uses Bailey.png
       skinnedMeshRef.current.material[4].color = whiteColor;
       skinnedMeshRef.current.material[4].map = picture;
+      skinnedMeshRef.current.material[5].color = whiteColor;
+      skinnedMeshRef.current.material[5].map = picture2;
+    } else if (isDsgn1030Page) {
+      skinnedMeshRef.current.material[4].color = whiteColor;
+      skinnedMeshRef.current.material[4].map =
+        dsgn1030FrontTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
       skinnedMeshRef.current.material[5].map = picture2;
     } else {

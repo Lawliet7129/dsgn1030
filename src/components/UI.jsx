@@ -38,7 +38,7 @@ pages.push({
 export const pageNames = [
   "Cover",
   "About Me",
-  "Projects",
+  "Exercise 1",
   "Incomplete.",
   "Inconsistency.",
   "Undecided.",
