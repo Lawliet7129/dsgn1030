@@ -291,7 +291,7 @@ const BrandMark = () => (
   >
     <span className="text-[11px] tracking-[0.32em] opacity-80">✦</span>
     <span className="font-['Playfair_Display'] italic text-[13px] tracking-[0.18em] opacity-85">
-      Bailey Koo · MMXXVII
+      Bailey Koo · DSGN 1030
     </span>
   </div>
 );

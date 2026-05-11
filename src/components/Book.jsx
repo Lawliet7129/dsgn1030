@@ -1264,6 +1264,173 @@ function createBlankChapterTexture(opts) {
   return tex;
 }
 
+/** Storybook "twilight stage" plate for the Final Project spread.
+ *  Uses the same About-Me palette base (#c8ccd7) so the ivory castle reads
+ *  warm against a cool, blueish page. The composition is a layered sky:
+ *    • base palette ground
+ *    • vertical twilight gradient (navy at top → mist at the bottom)
+ *    • a soft moonlit halo behind where the castle will materialize
+ *    • dense star scatter + sparkle stars in the upper sky
+ *    • a faint castle silhouette echo, large on the recto (stage), small
+ *      and distant on the verso (the kingdom seen from afar)
+ *    • a low cloud / mist band along the bottom on the recto
+ *  The chapter typography is laid out so it never collides with the 3D
+ *  castle: subtitle pinned to the top of the recto, classic centered layout
+ *  on the verso. */
+function createCastlePlateTexture(opts) {
+  const {
+    side = "recto",
+    chapterLabel = "",
+    subtitle = "",
+    closingLine = "",
+    placeholder = "",
+    seed = 50,
+  } = opts || {};
+
+  const W = 1024;
+  const H = Math.round((W * PAGE_HEIGHT) / PAGE_WIDTH);
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const fontFamily =
+    '"Playfair Display", Georgia, "Times New Roman", serif';
+  const isRecto = side === "recto";
+
+  // Base steel-blue ground — matches the About Me chapter plate exactly.
+  ctx.fillStyle = "#c8ccd7";
+  ctx.fillRect(0, 0, W, H);
+
+  // Vertical twilight gradient: navy at top fading through palette
+  // mid-tone into a brighter mist at the horizon line.
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, "rgba(46, 60, 95, 0.34)");
+  sky.addColorStop(0.55, "rgba(46, 60, 95, 0.04)");
+  sky.addColorStop(1, "rgba(255, 255, 255, 0.14)");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Moonlit radial halo where the 3D castle sits (recto) or where the
+  // narrative gathers (verso).
+  const halo = ctx.createRadialGradient(
+    W * 0.5,
+    H * (isRecto ? 0.58 : 0.45),
+    W * 0.04,
+    W * 0.5,
+    H * (isRecto ? 0.58 : 0.45),
+    W * (isRecto ? 0.78 : 0.6)
+  );
+  halo.addColorStop(0, "rgba(255, 255, 255, 0.42)");
+  halo.addColorStop(0.42, "rgba(224, 230, 244, 0.18)");
+  halo.addColorStop(1, "rgba(46, 60, 95, 0)");
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, W, H);
+
+  // Deterministic constellation scatter — denser in the upper sky.
+  let rng = (seed * 2654435761) >>> 0;
+  const rand = () => {
+    rng = (rng * 1664525 + 1013904223) >>> 0;
+    return ((rng >>> 0) & 0xffffff) / 0xffffff;
+  };
+  for (let i = 0; i < 28; i++) {
+    const x = W * 0.1 + rand() * W * 0.8;
+    const y = H * 0.1 + rand() * H * 0.44;
+    const r = 1.0 + rand() * 1.6;
+    const a = 0.22 + rand() * 0.3;
+    ctx.fillStyle = `rgba(46, 60, 95, ${a})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = W * 0.12 + rand() * W * 0.76;
+    const y = H * 0.12 + rand() * H * 0.38;
+    const size = 10 + rand() * 6;
+    ctx.fillStyle = "rgba(46, 60, 95, 0.42)";
+    drawStarPath(ctx, x, y, size);
+  }
+
+  // Castle silhouette echo — the page hints at what's about to appear.
+  if (isRecto) {
+    ctx.save();
+    ctx.globalAlpha = 0.15;
+    drawCastleSilhouette(ctx, W * 0.5, H * 0.72, W * 0.4);
+    ctx.restore();
+  } else {
+    // Verso: small distant silhouette in the upper right, like seeing
+    // the kingdom from afar.
+    ctx.save();
+    ctx.globalAlpha = 0.13;
+    drawCastleSilhouette(ctx, W * 0.74, H * 0.32, W * 0.2);
+    ctx.restore();
+  }
+
+  // Soft cloud / mist band on the recto so the castle's base reads as
+  // though it's rising out of twilight fog.
+  if (isRecto) {
+    const clouds = ctx.createLinearGradient(0, H * 0.66, 0, H * 0.94);
+    clouds.addColorStop(0, "rgba(255, 255, 255, 0)");
+    clouds.addColorStop(0.5, "rgba(255, 255, 255, 0.22)");
+    clouds.addColorStop(1, "rgba(255, 255, 255, 0.08)");
+    ctx.fillStyle = clouds;
+    ctx.fillRect(0, H * 0.66, W, H * 0.3);
+  }
+
+  // Standard storybook chapter frame on top.
+  drawChapterFrame(ctx, W, H, {
+    mode: "title",
+    chapterLabel,
+    closingLine,
+    inkOnLight: true,
+  });
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  if (subtitle) {
+    ctx.fillStyle = "rgba(46, 60, 95, 0.85)";
+    if (isRecto) {
+      // Pinned to the top so the 3D castle owns the middle of the page.
+      const size = Math.round(W * 0.068);
+      ctx.font = `italic 500 ${size}px ${fontFamily}`;
+      const lines = String(subtitle).split("\n");
+      const lh = size * 0.96;
+      const startY = H * 0.21 - ((lines.length - 1) * lh) / 2;
+      lines.forEach((line, idx) => {
+        ctx.fillText(line, W / 2, startY + idx * lh);
+      });
+    } else {
+      // Verso: classic centered display, same as the other chapter plates.
+      const size = Math.round(W * 0.082);
+      ctx.font = `italic 500 ${size}px ${fontFamily}`;
+      const lines = String(subtitle).split("\n");
+      const lh = size * 0.96;
+      const startY = H * 0.4 - ((lines.length - 1) * lh) / 2;
+      lines.forEach((line, idx) => {
+        ctx.fillText(line, W / 2, startY + idx * lh);
+      });
+    }
+  }
+
+  // Anchor sparkle — kept on the verso only (the recto's anchor IS the
+  // 3D castle).
+  if (!isRecto) {
+    ctx.fillStyle = "rgba(46, 60, 95, 0.4)";
+    drawStarPath(ctx, W / 2, H * 0.55, 26);
+  }
+
+  if (placeholder) {
+    ctx.fillStyle = "rgba(46, 60, 95, 0.62)";
+    ctx.font = `italic 400 ${Math.round(W * 0.034)}px ${fontFamily}`;
+    ctx.fillText(placeholder, W / 2, isRecto ? H * 0.84 : H * 0.66);
+  }
+
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 /** Per-blank-leaf chapter configuration — each leaf side gets its own title
  *  card. Indexed by Page.number, with .front / .back for the two faces.    */
 const BLANK_CHAPTER_CONFIG = {
@@ -1293,19 +1460,20 @@ const BLANK_CHAPTER_CONFIG = {
     },
     back: {
       chapterLabel: "CHAPTER THE FIFTH",
-      subtitle: "Final Proj.",
-      placeholder: "— the castle, in twilight —",
-      closingLine: "in which the kingdom rises.",
+      subtitle: "Final Project",
+      placeholder: "— at twilight, the kingdom rises —",
+      closingLine: "in which the castle returns to the sky.",
       seed: 51,
+      castle: true,
     },
   },
   5: {
     front: {
       chapterLabel: "CHAPTER THE FIFTH",
-      subtitle: "Final Proj.",
-      placeholder: "— the castle, in twilight —",
+      subtitle: "Final Project",
       closingLine: "in which the kingdom rises.",
       seed: 52,
+      castle: true,
     },
     back: {
       chapterLabel: "FIN.",
@@ -1478,8 +1646,16 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
     let cancelled = false;
     const generate = () => {
       if (cancelled) return;
-      const front = createBlankChapterTexture(config.front);
-      const back = createBlankChapterTexture(config.back);
+      // Final Project spread (leaf 4 back + leaf 5 front) is marked with
+      // `castle: true` and uses the blueish twilight-stage plate instead of
+      // the standard blank chapter plate, so the ivory 3D castle reads
+      // beautifully against a cool palette page.
+      const front = config.front?.castle
+        ? createCastlePlateTexture({ ...config.front, side: "recto" })
+        : createBlankChapterTexture(config.front);
+      const back = config.back?.castle
+        ? createCastlePlateTexture({ ...config.back, side: "verso" })
+        : createBlankChapterTexture(config.back);
       setBlankFrontTexture((prev) => {
         prev?.dispose?.();
         return front;
