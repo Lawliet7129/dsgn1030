@@ -41,7 +41,7 @@ export const pageNames = [
   "Exercise 1",
   "Incomplete.",
   "Inconsistency.",
-  "Undecided.",
+  "Final Proj.",
   "Back Cover",
 ];
 

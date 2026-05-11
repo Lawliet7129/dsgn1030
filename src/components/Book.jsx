@@ -1,8 +1,8 @@
-import { useCursor, useTexture } from "@react-three/drei";
+import { useCursor, useGLTF, useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useAtom } from "jotai";
 import { easing } from "maath";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bone,
@@ -19,7 +19,89 @@ import {
   Vector3,
 } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
-import { pageAtom, pages, showAboutMeAtom } from "./UI";
+import { pageAtom, pageNames, pages, showAboutMeAtom } from "./UI";
+
+/** Sidebar index of the "Final Proj." button, derived so renames stay safe. */
+const FINAL_PROJ_PAGE_INDEX = pageNames.indexOf("Final Proj.");
+/** ms to wait after the page settles before treating the flip motion as ended. */
+const FLIP_SETTLE_DELAY_MS = 450;
+const DISNEY_CASTLE_GLB_PATH = "/disneycastle-draco.glb";
+
+useGLTF.preload(DISNEY_CASTLE_GLB_PATH, true);
+
+function DisneyCastle(props) {
+  const { nodes, materials } = useGLTF(DISNEY_CASTLE_GLB_PATH, true);
+  return (
+    <group {...props} dispose={null}>
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface19SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_1.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface14SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_2.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface15SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_3.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface18SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_4.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface22SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_5.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface20SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_6.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface24SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_7.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface21SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_8.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface23SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_9.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface16SG"]}
+      />
+      <mesh
+        castShadow
+        receiveShadow
+        geometry={nodes.mesh_0_10.geometry}
+        material={materials["M_|polySurface36_aiStandardSurface17SG"]}
+      />
+    </group>
+  );
+}
 
 const easingFactor = 0.5; // Controls the speed of the easing
 const easingFactorFold = 0.3; // Controls the speed of the easing
@@ -193,6 +275,9 @@ pageGeometry.setAttribute(
 
 const whiteColor = new Color("white");
 const emissiveColor = new Color("blueviolet");
+/** Leaves after Exercise 1 (index > 2): solid #ffffff, no photo textures */
+const BLANK_LEAF_COLOR = new Color("#ffffff");
+const BLANK_LEAF_TEXTURE_PATH = "/textures/blank-white.png";
 
 const pageMaterials = [
   new MeshStandardMaterial({
@@ -210,17 +295,19 @@ const pageMaterials = [
 ];
 
 pages.forEach((page, index) => {
-  // Page 0 back Bailey.png; page 1 selfportrait + pj1-2 back; page 2 pj1-2 + back + pj1-3 overlay
+  // Page 0 back Bailey.png; page 1 selfportrait + pj1-1 back; page 2 pj1-2 + back + pj1-3; index>2 blank
   if (index === 0) {
     useTexture.preload(`/textures/${page.front}.jpg`);
     useTexture.preload(`/textures/Bailey.png`);
   } else if (index === 1) {
     useTexture.preload(`/textures/selfportrait.jpg`);
-    useTexture.preload(`/textures/pj1-2.png`);
-  } else if (index === 2) {
     useTexture.preload(`/textures/pj1-1.png`);
+  } else if (index === 2) {
+    useTexture.preload(`/textures/pj1-2.png`);
     useTexture.preload(`/textures/${page.back}.jpg`);
     useTexture.preload(`/textures/pj1-3.png`);
+  } else if (index > 2) {
+    useTexture.preload(BLANK_LEAF_TEXTURE_PATH);
   } else {
     useTexture.preload(`/textures/${page.front}.jpg`);
     useTexture.preload(`/textures/${page.back}.jpg`);
@@ -234,6 +321,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
   const isPage0Back = number === 0;
   // Leaf 2 (Exercise 1): front pj1-2 base + pj1-3 circular overlay; back is photo jpg
   const isDsgn1030Page = number === 2;
+  const isBlankLeafAfterExercise1 = number > 2;
 
   const texturePaths = isPage0Back
     ? [`/textures/${front}.jpg`, "/textures/Bailey.png"]
@@ -245,6 +333,8 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         `/textures/${back}.jpg`,
         "/textures/pj1-3.png",
       ]
+    : isBlankLeafAfterExercise1
+    ? [BLANK_LEAF_TEXTURE_PATH, BLANK_LEAF_TEXTURE_PATH]
     : [`/textures/${front}.jpg`, `/textures/${back}.jpg`];
 
   const textures = useTexture(texturePaths);
@@ -475,6 +565,11 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
         dsgn1030FrontTexture || picture;
       skinnedMeshRef.current.material[5].color = whiteColor;
       skinnedMeshRef.current.material[5].map = picture2;
+    } else if (isBlankLeafAfterExercise1) {
+      skinnedMeshRef.current.material[4].color = BLANK_LEAF_COLOR;
+      skinnedMeshRef.current.material[4].map = null;
+      skinnedMeshRef.current.material[5].color = BLANK_LEAF_COLOR;
+      skinnedMeshRef.current.material[5].map = null;
     } else {
       // Other pages: normal textures
       skinnedMeshRef.current.material[4].color = whiteColor;
@@ -608,6 +703,7 @@ const Page = ({ number, front, back, page, opened, bookClosed, ...props }) => {
 export const Book = ({ ...props }) => {
   const [page] = useAtom(pageAtom);
   const [delayedPage, setDelayedPage] = useState(page);
+  const [showCastle, setShowCastle] = useState(false);
 
   useEffect(() => {
     let timeout;
@@ -637,18 +733,43 @@ export const Book = ({ ...props }) => {
     };
   }, [page]);
 
+  // Show castle once flipping settles on Final Proj.; hide instantly when leaving
+  useEffect(() => {
+    const onFinalProj = page === FINAL_PROJ_PAGE_INDEX;
+    if (!onFinalProj || delayedPage !== page) {
+      setShowCastle(false);
+      return;
+    }
+    const timer = setTimeout(
+      () => setShowCastle(true),
+      FLIP_SETTLE_DELAY_MS
+    );
+    return () => clearTimeout(timer);
+  }, [page, delayedPage]);
+
   return (
-    <group {...props} rotation-y={-Math.PI / 2}>
-      {[...pages].map((pageData, index) => (
-        <Page
-          key={index}
-          page={delayedPage}
-          number={index}
-          opened={delayedPage > index}
-          bookClosed={delayedPage === 0 || delayedPage === pages.length}
-          {...pageData}
-        />
-      ))}
+    <group {...props}>
+      <group rotation-y={-Math.PI / 2}>
+        {[...pages].map((pageData, index) => (
+          <Page
+            key={index}
+            page={delayedPage}
+            number={index}
+            opened={delayedPage > index}
+            bookClosed={delayedPage === 0 || delayedPage === pages.length}
+            {...pageData}
+          />
+        ))}
+      </group>
+      {showCastle && (
+        <Suspense fallback={null}>
+          <DisneyCastle
+            position={[0, 0.5, 0.5]}
+            rotation={[Math.PI / 2, -Math.PI / 2, 0]}
+            scale={0.3}
+          />
+        </Suspense>
+      )}
     </group>
   );
 };
