@@ -1,5 +1,6 @@
 import { atom, useAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const pictures = [
   "DSC00680",
@@ -426,6 +427,60 @@ function NavPill({ active, onClick, label, compact = false }) {
   );
 }
 
+/** Floating storybook companion that pops out next to the active "About Me"
+ *  nav pill. Navigates to the `/about` route — the fuller written chapter.
+ *  Styled as a glass card with a leading ✦ ornament, Playfair-italic
+ *  "read in full" label, and a chevron that nudges right on hover, hinting
+ *  at "turn the page".
+ *
+ *  - Desktop: absolutely positioned to the right of the About Me pill so it
+ *    sits outside the chapter panel without widening any other row.
+ *  - Mobile: inlined after the About Me pill in the horizontal strip. */
+function OpenAboutButton({ visible, compact = false, className = "" }) {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/about")}
+      aria-label="Open the full About Me chapter"
+      title="Read this chapter in full"
+      className={`${className} group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c8ccd7]/40 bg-[#2e3c5f]/35 text-[#c8ccd7] backdrop-blur-md shadow-[0_4px_14px_rgba(46,60,95,0.25)] transition-all duration-300 ease-out hover:bg-[#c8ccd7]/15 hover:border-[#c8ccd7]/70 hover:text-white hover:shadow-[0_6px_22px_rgba(200,204,215,0.35)] ${
+        compact ? "px-2 py-1" : "px-3 py-1.5"
+      } ${
+        visible
+          ? "opacity-100 translate-x-0 pointer-events-auto"
+          : "opacity-0 -translate-x-2 pointer-events-none"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="font-['Playfair_Display'] italic text-[13px] leading-none text-[#c8ccd7]/85 group-hover:text-white transition-colors"
+      >
+        ✦
+      </span>
+      <span className="font-['Playfair_Display'] italic text-[12.5px] leading-none tracking-wide normal-case">
+        read in full
+      </span>
+      <svg
+        viewBox="0 0 24 24"
+        width="11"
+        height="11"
+        aria-hidden
+        className="text-[#c8ccd7]/75 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-white"
+      >
+        <path
+          d="M5 12h14M13 6l6 6-6 6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+    </button>
+  );
+}
+
 export const UI = () => {
   const [page, setPage] = useAtom(pageAtom);
   const [showAboutMe, setShowAboutMe] = useAtom(showAboutMeAtom);
@@ -474,17 +529,33 @@ export const UI = () => {
                 {counterLabel}
               </span>
             </div>
-            {[...pages].map((_, index) => (
-              <NavPill
-                key={index}
-                active={index === page}
-                onClick={() => {
-                  setPage(index);
-                  setShowAboutMe(index === 1);
-                }}
-                label={pageNames[index]}
-              />
-            ))}
+            {[...pages].map((_, index) => {
+              const pill = (
+                <NavPill
+                  active={index === page}
+                  onClick={() => {
+                    setPage(index);
+                    setShowAboutMe(index === 1);
+                  }}
+                  label={pageNames[index]}
+                />
+              );
+              // The About Me row carries a floating companion button that
+              // opens the long-form /about chapter, anchored absolutely so
+              // the chapter panel's width stays uniform.
+              if (index === 1) {
+                return (
+                  <div key={index} className="relative">
+                    {pill}
+                    <OpenAboutButton
+                      visible={page === 1}
+                      className="absolute left-full top-1/2 ml-3 -translate-y-1/2 z-20"
+                    />
+                  </div>
+                );
+              }
+              return <div key={index}>{pill}</div>;
+            })}
             <div className="my-1 border-t border-[#c8ccd7]/15" />
             <NavPill
               active={page === pages.length}
@@ -499,18 +570,37 @@ export const UI = () => {
         {/* Mobile: horizontal navigation pill bar at top */}
         <div className="md:hidden w-full pointer-events-auto flex flex-col items-center gap-1.5 px-4 pt-4">
           <div className="overflow-auto flex items-center gap-1 max-w-full px-2 py-1.5 rounded-full border border-[#c8ccd7]/25 bg-[#2e3c5f]/15 backdrop-blur-md shadow-[0_8px_20px_rgba(46,60,95,0.18)]">
-            {[...pages].map((_, index) => (
-              <NavPill
-                key={index}
-                active={index === page}
-                onClick={() => {
-                  setPage(index);
-                  setShowAboutMe(index === 1);
-                }}
-                label={pageNames[index]}
-                compact
-              />
-            ))}
+            {[...pages].map((_, index) => {
+              const pill = (
+                <NavPill
+                  active={index === page}
+                  onClick={() => {
+                    setPage(index);
+                    setShowAboutMe(index === 1);
+                  }}
+                  label={pageNames[index]}
+                  compact
+                />
+              );
+              if (index === 1) {
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    {pill}
+                    {page === 1 && (
+                      <OpenAboutButton visible={page === 1} compact />
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <div key={index} className="flex-shrink-0">
+                  {pill}
+                </div>
+              );
+            })}
             <NavPill
               active={page === pages.length}
               onClick={() => {
