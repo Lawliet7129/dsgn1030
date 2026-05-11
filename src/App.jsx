@@ -11,6 +11,7 @@ import {
   UI,
 } from "./components/UI";
 import { AboutMe } from "./components/AboutMe";
+import { CursorTrail } from "./components/CursorTrail";
 
 /** Vertical offset for the whole 3D scene (book + castle + ground). */
 const SCENE_POSITION_Y = -0.4;
@@ -54,6 +55,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
+      <CursorTrail />
     </BrowserRouter>
   );
 }

@@ -1,0 +1,98 @@
+/* ============================================================
+ * Cursor Trail — pixie-dust effect.
+ *
+ * Designed to match the Disney-castle / twilight storybook
+ * aesthetic. Particles drift, twinkle, and fade like falling
+ * stardust. Sits above all other UI but is fully pointer-pass.
+ * ============================================================ */
+
+.cursor-trail {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+  /* Soft additive blend so particles glow against any background
+   * (book, sky, white book pages). */
+  mix-blend-mode: screen;
+}
+
+.cursor-trail-particle {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(232, 235, 244, 0.7) 35%,
+    rgba(200, 204, 215, 0.45) 60%,
+    transparent 78%
+  );
+  box-shadow:
+    0 0 4px rgba(255, 255, 255, 0.85),
+    0 0 9px rgba(200, 204, 215, 0.65),
+    0 0 18px rgba(148, 159, 182, 0.45),
+    0 0 28px rgba(86, 83, 96, 0.28);
+
+  opacity: 0;
+  transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.5);
+  animation-name: cursor-trail-drift;
+  animation-timing-function: cubic-bezier(0.22, 0.62, 0.4, 1);
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+}
+
+/* Serif sparkle variant — ✦ ✧ ✶ ✺ glyphs interleaved with the dust dots. */
+.cursor-trail-particle--star {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  color: #ffffff;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow:
+    0 0 4px rgba(255, 255, 255, 0.95),
+    0 0 10px rgba(200, 204, 215, 0.85),
+    0 0 22px rgba(148, 159, 182, 0.55),
+    0 0 36px rgba(86, 83, 96, 0.3);
+  /* Stars get slightly more dramatic motion (handled via --rot in JS). */
+}
+
+@keyframes cursor-trail-drift {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.4);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(1.05);
+  }
+  35% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform:
+      translate(-50%, -50%)
+      translate(var(--dx, 0px), var(--dy, 40px))
+      rotate(var(--rot, 0deg))
+      scale(0.35);
+  }
+}
+
+/* ----- Reduced motion + touch ---------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-trail {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .cursor-trail {
+    display: none;
+  }
+}

@@ -389,14 +389,14 @@ export const AboutMe = () => {
       <header className="about-topbar">
         <ReturnToBookButton />
         <div className="about-topbar-meta" aria-hidden="true">
-          <span className="topbar-folio">Folio I</span>
+          <span className="topbar-folio">2026</span>
           <span className="topbar-sep">✦</span>
-          <span className="topbar-date">A.D.&nbsp;MMXXVI</span>
+          <span className="topbar-date">Bailey Koo</span>
           <span className="topbar-sep">✦</span>
-          <span className="topbar-read">a reading of vii&nbsp;min.</span>
+          <span className="topbar-read">University of Pennsylvania</span>
         </div>
         <div className="about-brand-mark" aria-hidden="true">
-          ✦&nbsp;&nbsp;Bailey&nbsp;Koo · A&nbsp;Chapter,&nbsp;in&nbsp;Full
+          ✦  About Me
         </div>
       </header>
 
@@ -411,11 +411,11 @@ export const AboutMe = () => {
           </div>
           <h1 className="about-hero-title">Bailey Koo</h1>
           <div className="about-hero-subtitle">
-            — the storyteller, at length —
+            — Math & Computer Science—
           </div>
           <div className="about-rule about-rule--big" />
           <div className="about-hero-meta">
-            <span>Computer Science &amp; Mathematics</span>
+            <span>Quantiative Research Developer</span>
             <span className="hero-meta-dot" aria-hidden="true">
               ✦
             </span>
@@ -424,7 +424,7 @@ export const AboutMe = () => {
               ✦
             </span>
             <span>
-              <em>Class of MMXXVII</em>
+              <em>Class of 2027</em>
             </span>
           </div>
         </section>
@@ -480,9 +480,8 @@ export const AboutMe = () => {
         <section className="about-section">
           <SectionHeader
             numeral="II"
-            eyebrow="Act&nbsp;the&nbsp;Second &nbsp;·&nbsp; Folio&nbsp;ii"
+            eyebrow="·&nbsp; Folio&nbsp;ii"
             title="Of Experiences"
-            subtitle="—a chronicle of where the work has taken me—"
           />
           <div className="about-timeline">
             {experiences.map((exp, i) => (
@@ -513,9 +512,8 @@ export const AboutMe = () => {
         <section className="about-section">
           <SectionHeader
             numeral="III"
-            eyebrow="Act&nbsp;the&nbsp;Third &nbsp;·&nbsp; Folio&nbsp;iii"
+            eyebrow="Folio&nbsp;iii"
             title="Of Distinction"
-            subtitle="—a few markers along the way—"
           />
           <div className="about-awards-spread">
             <div className="about-awards-pillar" data-reveal>
@@ -589,9 +587,8 @@ export const AboutMe = () => {
         <section className="about-section">
           <SectionHeader
             numeral="IV"
-            eyebrow="Act&nbsp;the&nbsp;Fourth &nbsp;·&nbsp; Folio&nbsp;iv"
+            eyebrow="Folio&nbsp;iv"
             title="Of Research & Writing"
-            subtitle="—papers, proofs, and unfinished arguments—"
           />
           <div className="about-research-spread">
             {researchArticles.map((r, i) => (
@@ -621,9 +618,8 @@ export const AboutMe = () => {
         <section className="about-section">
           <SectionHeader
             numeral="V"
-            eyebrow="Act&nbsp;the&nbsp;Fifth &nbsp;·&nbsp; Folio&nbsp;v"
+            eyebrow="Folio&nbsp;v"
             title="Tools of the Trade"
-            subtitle="—the instruments, in no particular order—"
           />
           <div className="about-tech-spread" data-reveal>
             {techStack.map((t, i) => (
@@ -640,9 +636,8 @@ export const AboutMe = () => {
         <section className="about-section">
           <SectionHeader
             numeral="VI"
-            eyebrow="Epilogue &nbsp;·&nbsp; Folio&nbsp;vi"
-            title="The Postscript"
-            subtitle="—where to find me, should you wish to write—"
+            eyebrow="Epilogue"
+            title="Contact"
           />
           <ul className="about-contact-list" data-reveal>
             <li>
